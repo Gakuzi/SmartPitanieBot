@@ -49,9 +49,15 @@ function getSession(chatId) {
   return {};
 }
 
-function startSession(chatId, awaitingInput) {
+function startSession(chatId, awaitingInput, data = {}) {
   const userProps = PropertiesService.getUserProperties();
-  userProps.setProperty('session_' + chatId, JSON.stringify({ awaitingInput }));
+  const session = { awaitingInput, data };
+  userProps.setProperty('session_' + chatId, JSON.stringify(session));
+  return session;
+}
+
+function updateSession(chatId, awaitingInput, data) {
+  return startSession(chatId, awaitingInput, data); // Просто перезаписываем сессию с новыми данными
 }
 
 function clearSession(chatId) {

@@ -43,18 +43,46 @@ function handleCallbackQuery(callbackQuery) {
   const chatId = callbackQuery.from.id;
   const messageId = callbackQuery.message.message_id;
   const [action, value] = callbackQuery.data.split(':');
+  const session = getSession(chatId);
 
   answerCallbackQuery(callbackQuery.id);
 
   if (action === 'setGoal') {
     const userData = saveUserParam(chatId, 'goal', value);
     editMessageText(chatId, messageId, `Цель сохранена: *${value}*`);
-    
-    // Если все данные для расчета есть, запускаем его
     if (userData.weight && userData.goal) {
         triggerNutritionCalculation(chatId, userData);
     }
     sendMenu(chatId);
+    return;
+  }
+
+  if (action === 'set_sex') {
+    editMessageText(chatId, messageId, `Пол сохранен: *${value === 'm' ? 'Мужской' : 'Женский'}*`);
+    session.data.sex = value;
+    updateSession(chatId, 'awaiting_activity', session.data);
+    sendActivityOptions(chatId);
+    return;
+  }
+
+  if (action === 'set_activity') {
+    editMessageText(chatId, messageId, `Активность сохранена: *${value}*`);
+    session.data.activity = value;
+    // Все данные собраны, сохраняем и считаем
+    let userData = saveUserParam(chatId, 'weight', session.data.weight);
+    userData = saveUserParam(chatId, 'height', session.data.height);
+    userData = saveUserParam(chatId, 'age', session.data.age);
+    userData = saveUserParam(chatId, 'sex', session.data.sex);
+    userData = saveUserParam(chatId, 'activity', session.data.activity);
+    
+    clearSession(chatId);
+    sendText(chatId, 'Параметры сохранены.');
+
+    if (userData.weight && userData.goal) {
+        triggerNutritionCalculation(chatId, userData);
+    }
+    sendMenu(chatId);
+    return;
   }
 }
 
@@ -70,8 +98,8 @@ function handleCommand(chatId, msg, msgRaw) {
     case '🥅 установить цель':
       return sendGoalOptions(chatId);
     case '⚖️ ввести параметры':
-      startSession(chatId, 'awaitParams');
-      return sendText(chatId, 'Введи через запятую: вес(кг), рост(см), возраст, пол(m/f), уровень активности(низкий/средний/высокий)');
+      startSession(chatId, 'awaiting_weight');
+      return sendText(chatId, 'Введите ваш вес в килограммах (например, 70):');
     case '🕒 установить время уведомлений':
       startSession(chatId, 'awaitNotifyTime');
       return sendText(chatId, 'Введите время уведомлений в формате ЧЧ:ММ (например, 07:30)');
@@ -92,32 +120,34 @@ function handleCommand(chatId, msg, msgRaw) {
 // --- Сессии для пользовательского ввода ---
 function handleUserInput(chatId, input, session) {
   switch (session.awaitingInput) {
-    case 'awaitParams':
-      const parts = input.split(',').map(x => x.trim());
-      if (parts.length !== 5) {
-        sendText(chatId, 'Ошибка формата. Введи: вес, рост, возраст, пол(m/f), активность(низкий/средний/высокий)');
+    case 'awaiting_weight':
+      if (isNaN(input) || input <= 0) {
+        sendText(chatId, 'Неверный формат. Введите вес числом, например: 70');
         return;
       }
-      const [weight, height, age, sex, activity] = parts;
-      if (isNaN(weight) || isNaN(height) || isNaN(age) || !['m', 'f'].includes(sex.toLowerCase()) || !['низкий', 'средний', 'высокий'].includes(activity.toLowerCase())) {
-        sendText(chatId, 'Проверь данные. Пример: 70, 175, 40, m, средний');
-        return;
-      }
-      // Сохраняем все параметры
-      let userData = saveUserParam(chatId, 'weight', weight);
-      userData = saveUserParam(chatId, 'height', height);
-      userData = saveUserParam(chatId, 'age', age);
-      userData = saveUserParam(chatId, 'sex', sex.toLowerCase());
-      userData = saveUserParam(chatId, 'activity', activity.toLowerCase());
-      
-      clearSession(chatId);
-      sendText(chatId, 'Параметры сохранены.');
+      session.data.weight = Number(input);
+      updateSession(chatId, 'awaiting_height', session.data);
+      sendText(chatId, 'Отлично! Теперь введите ваш рост в сантиметрах (например, 175):');
+      break;
 
-      // Если все данные для расчета есть, запускаем его
-      if (userData.weight && userData.goal) {
-          triggerNutritionCalculation(chatId, userData);
+    case 'awaiting_height':
+      if (isNaN(input) || input <= 0) {
+        sendText(chatId, 'Неверный формат. Введите рост числом, например: 175');
+        return;
       }
-      sendMenu(chatId);
+      session.data.height = Number(input);
+      updateSession(chatId, 'awaiting_age', session.data);
+      sendText(chatId, 'Принято. Сколько вам полных лет?');
+      break;
+
+    case 'awaiting_age':
+      if (isNaN(input) || input <= 0) {
+        sendText(chatId, 'Неверный формат. Введите возраст числом, например: 30');
+        return;
+      }
+      session.data.age = Number(input);
+      updateSession(chatId, 'awaiting_sex', session.data);
+      sendSexOptions(chatId);
       break;
 
     case 'awaitNotifyTime':

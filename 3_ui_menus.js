@@ -41,6 +41,31 @@ function sendGoalOptions(chatId) {
   sendText(chatId, "Выберите вашу цель:", keyboard);
 }
 
+function sendSexOptions(chatId) {
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: "Мужской", callback_data: "set_sex:m" },
+        { text: "Женский", callback_data: "set_sex:f" }
+      ]
+    ]
+  };
+  sendText(chatId, "Укажите ваш пол:", keyboard);
+}
+
+function sendActivityOptions(chatId) {
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: "Низкий", callback_data: "set_activity:низкий" },
+        { text: "Средний", callback_data: "set_activity:средний" },
+        { text: "Высокий", callback_data: "set_activity:высокий" }
+      ]
+    ]
+  };
+  sendText(chatId, "Выберите ваш уровень физической активности:", keyboard);
+}
+
 function sendMenu(chatId) {
   sendText(chatId, "Выберите действие:", getMenu(chatId));
 }
