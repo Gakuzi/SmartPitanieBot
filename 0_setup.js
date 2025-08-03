@@ -41,7 +41,7 @@ function setupProjectInfrastructure() {
     Logger.log(`✅ Шаблонная таблица "Template_SmartPit_Sheet" успешно создана. ID: ${sheetId}`);
 
     // 3. Создаем необходимые листы в шаблоне
-    const sheetNames = ['Меню по дням', 'Список покупок', 'Готовка', 'Замены', 'Настройки', 'Логи'];
+    const sheetNames = ['Меню по дням', 'Список покупок', 'Готовка', 'Замены', 'Настройки', 'Логи', 'Продукты'];
     const defaultSheet = templateSheet.getSheets()[0];
     templateSheet.renameActiveSheet(sheetNames[0]);
 
@@ -49,6 +49,11 @@ function setupProjectInfrastructure() {
       templateSheet.insertSheet(sheetNames[i]);
     }
     Logger.log(`✅ В шаблон добавлены листы: ${sheetNames.join(', ')}`);
+
+    // 4. Добавляем заголовки в лист Продукты
+    const productsSheet = templateSheet.getSheetByName('Продукты');
+    productsSheet.getRange('A1:F1').setValues([['Тип', 'Блюдо', 'Калории', 'Белки', 'Жиры', 'Углеводы']]);
+    Logger.log(`✅ В лист "Продукты" добавлены заголовки.`);
 
     Logger.log("🎉 --- НАСТРОЙКА УСПЕШНО ЗАВЕРШЕНА ---");
 
