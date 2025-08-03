@@ -41,7 +41,7 @@ function setupProjectInfrastructure() {
     Logger.log(`✅ Шаблонная таблица "Template_SmartPit_Sheet" успешно создана. ID: ${sheetId}`);
 
     // 3. Создаем необходимые листы в шаблоне
-    const sheetNames = ['Меню по дням', 'Список покупок', 'Готовка', 'Замены', 'Настройки', 'Логи', 'Продукты'];
+    const sheetNames = ['Меню по дням', 'Список покупок', 'Готовка', 'Замены', 'Настройки', 'Логи', 'Продукты', 'Тест отправки'];
     const defaultSheet = templateSheet.getSheets()[0];
     templateSheet.renameActiveSheet(sheetNames[0]);
 
@@ -54,6 +54,28 @@ function setupProjectInfrastructure() {
     const productsSheet = templateSheet.getSheetByName('Продукты');
     productsSheet.getRange('A1:F1').setValues([['Тип', 'Блюдо', 'Калории', 'Белки', 'Жиры', 'Углеводы']]);
     Logger.log(`✅ В лист "Продукты" добавлены заголовки.`);
+
+    // 5. Добавляем заголовки и кнопки в лист Тест отправки
+    const testSheet = templateSheet.getSheetByName('Тест отправки');
+    testSheet.getRange('A1:B1').setValues([['Сообщение', 'Действие']]);
+    testSheet.getRange('A2').setValue('Тестовое сообщение 1');
+    testSheet.getRange('A3').setValue('Тестовое сообщение 2');
+    testSheet.getRange('A4').setValue('Тестовое сообщение 3');
+
+    // Добавляем кнопки
+    const range1 = testSheet.getRange('B2');
+    testSheet.insertImage('https://i.imgur.com/f2g3L0L.png', 2, 2); // Пример кнопки
+    testSheet.getRange('B2').setFormula('=HYPERLINK("javascript:sendTestMessage(\"Тестовое сообщение 1\")", "Отправить")');
+
+    const range2 = testSheet.getRange('B3');
+    testSheet.insertImage('https://i.imgur.com/f2g3L0L.png', 2, 3); // Пример кнопки
+    testSheet.getRange('B3').setFormula('=HYPERLINK("javascript:sendTestMessage(\"Тестовое сообщение 2\")", "Отправить")');
+
+    const range3 = testSheet.getRange('B4');
+    testSheet.insertImage('https://i.imgur.com/f2g3L0L.png', 2, 4); // Пример кнопки
+    testSheet.getRange('B4').setFormula('=HYPERLINK("javascript:sendTestMessage(\"Тестовое сообщение 3\")", "Отправить")');
+
+    Logger.log(`✅ В лист "Тест отправки" добавлены заголовки и кнопки.`);
 
     Logger.log("🎉 --- НАСТРОЙКА УСПЕШНО ЗАВЕРШЕНА ---");
 

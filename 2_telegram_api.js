@@ -60,3 +60,27 @@ function answerCallbackQuery(callbackQueryId) {
   const url = `https://api.telegram.org/bot${telegramToken}/answerCallbackQuery`;
   UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', payload: JSON.stringify({ callback_query_id: callbackQueryId }) });
 }
+
+/**
+ * Отправляет тестовое сообщение администратору из Google Sheet.
+ * Эту функцию нужно привязать к кнопкам в листе "Тест отправки".
+ * @param {string} messageText - Текст сообщения для отправки.
+ */
+function sendTestMessage(messageText) {
+  const scriptProps = PropertiesService.getScriptProperties();
+  const adminChatId = scriptProps.getProperty('ADMIN_CHAT_ID');
+  
+  if (!adminChatId) {
+    Logger.log("TEST_MESSAGE: ADMIN_CHAT_ID не найден в ScriptProperties. Невозможно отправить тестовое сообщение.");
+    SpreadsheetApp.getUi().alert('Ошибка', 'ADMIN_CHAT_ID не найден в ScriptProperties. Проверьте настройки.', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+
+  try {
+    sendText(adminChatId, `Тестовое сообщение из таблицы: ${messageText}`);
+    SpreadsheetApp.getUi().alert('Успех', 'Тестовое сообщение отправлено администратору.', SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (e) {
+    Logger.log(`TEST_MESSAGE: Ошибка при отправке тестового сообщения: ${e.message}`);
+    SpreadsheetApp.getUi().alert('Ошибка', `Не удалось отправить тестовое сообщение: ${e.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
