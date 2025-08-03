@@ -4,6 +4,22 @@ const SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1EK0i774b668t6bZ
 const userProps = PropertiesService.getUserProperties();
 const scriptProps = PropertiesService.getScriptProperties();
 
+// --- Эхо-бот для проверки связи ---
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const chatId = data.message.chat.id;
+    const text = data.message.text;
+    sendText(chatId, `Вы сказали: ${text}`);
+    Logger.log(`Echoed: ${text} to ${chatId}`);
+  } catch (error) {
+    Logger.log('Error in echo bot: ' + error.message);
+    Logger.log('Received data: ' + JSON.stringify(e.postData.contents));
+  }
+}
+
+/*
+// --- Оригинальная функция doPost (закомментирована) ---
 function doPost(e) {
   Logger.log(JSON.stringify(e.postData.contents));
   let data;
@@ -57,6 +73,7 @@ function doPost(e) {
       return sendMenu(chatId);
   }
 }
+*/
 
 // --- Сессии для пользовательского ввода ---
 function getSession(chatId) {
