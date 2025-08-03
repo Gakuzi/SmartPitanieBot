@@ -1,3 +1,12 @@
+const ALL_COMMANDS = [
+  '/start', '⚙️ настройки', '⬅️ назад', '🥅 установить цель', '⚖️ ввести параметры',
+  '🕒 установить время уведомлений', '🍽 показать меню', '🛒 список покупок', '👨‍🍳 что готовим?', '🔄 замена продукта'
+];
+
+function isCommand(msg) {
+  return ALL_COMMANDS.includes(msg.toLowerCase());
+}
+
 // --- Основная функция обработки входящих запросов ---
 function doPost(e) {
   let chatId, data;
@@ -19,10 +28,14 @@ function doPost(e) {
       const msg = msgRaw.toLowerCase();
       const session = getSession(chatId);
 
-      if (session && session.awaitingInput) {
-        handleUserInput(chatId, msgRaw, session);
+      // Проверяем, не является ли сообщение новой командой, прерывающей текущий ввод
+      if (session && session.awaitingInput && isCommand(msg)) {
+        clearSession(chatId);
+        handleCommand(chatId, msg, msgRaw); // Выполняем новую команду
+      } else if (session && session.awaitingInput) {
+        handleUserInput(chatId, msgRaw, session); // Продолжаем ввод
       } else {
-        handleCommand(chatId, msg, msgRaw);
+        handleCommand(chatId, msg, msgRaw); // Обычная обработка команд
       }
       return;
     }
