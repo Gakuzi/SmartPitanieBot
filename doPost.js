@@ -1,93 +1,72 @@
 /**
- * ЕДИНАЯ ТОЧКА ВХОДА ДЛЯ TELEGRAM
- *
- * Эта функция является единственным обработчиком doPost для веб-приложения.
- * Она читает настройку DEBUG_MODE из ScriptProperties и в зависимости от нее
- * передает управление либо основной логике бота, либо эхо-тесту.
+ * ОТЛАДОЧНАЯ ТОЧКА ВХОДА V2 (по идее пользователя) - УЛУЧШЕННАЯ ВЕРСИЯ
+ * 
+ * Цель: Немедленно отправить уведомление администратору при любом вызове,
+ * максимально устойчиво к некорректным входящим данным.
  */
 function doPost(e) {
   const scriptProps = PropertiesService.getScriptProperties();
-  const debugMode = scriptProps.getProperty('DEBUG_MODE');
+  const adminChatId = scriptProps.getProperty('ADMIN_CHAT_ID');
+  const telegramToken = scriptProps.getProperty('TELEGRAM_TOKEN');
 
-  if (debugMode === 'true') {
-    handleEchoTest(e);
-  } else {
-    handleRequest(e);
+  // Если нет админа или токена, мы не можем отправить уведомление.
+  // В этом случае, просто логируем и выходим.
+  if (!adminChatId || !telegramToken) {
+    Logger.log("ADMIN_NOTIFY: FATAL - ADMIN_CHAT_ID или TELEGRAM_TOKEN не найдены в ScriptProperties. Невозможно отправить уведомление.");
+    return;
   }
-}
 
-/**
- * Обрабатывает входящий запрос в режиме ЭХО-ТЕСТА.
- */
-function handleEchoTest(e) {
+  let message = "Сигнал получен!\n";
+  let rawData = "Не удалось получить postData.contents.";
+
   try {
-    const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
-    
-    // Логируем часть токена для проверки, не раскрывая его целиком
-    if (telegramToken) {
-      const tokenPart = `${telegramToken.substring(0, 4)}...${telegramToken.slice(-4)}`;
-      Logger.log(`ECHO_TEST: Используется токен, начинающийся и заканчивающийся на: ${tokenPart}`);
+    // Пытаемся безопасно получить содержимое postData
+    if (e && e.postData && e.postData.contents) {
+      rawData = e.postData.contents;
+      message += "Содержимое postData:\n" + rawData;
+    } else if (e) {
+      // Если postData.contents нет, но объект e существует, пытаемся его сериализовать
+      rawData = JSON.stringify(e, null, 2); // Красивое форматирование JSON
+      message += "Объект 'e' получен, но postData.contents пуст. Содержимое e:\n" + rawData;
     } else {
-      Logger.log("ECHO_TEST: FATAL - TELEGRAM_TOKEN не найден в ScriptProperties!");
-      return;
+      // Если объект e вообще не получен
+      message += "Объект 'e' не получен (пустой вызов).";
     }
-
-    const data = JSON.parse(e.postData.contents);
-    const chatId = data.message.chat.id;
-    const text = data.message.text;
-
-    const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
-    const payload = { chat_id: String(chatId), text: `Эхо: ${text}` };
-    const options = { method: 'post', contentType: 'application/json', payload: JSON.stringify(payload) };
-
-    UrlFetchApp.fetch(url, options);
-
   } catch (err) {
-    Logger.log(`ECHO_TEST: CRITICAL - ${err.message}`);
+    // Если даже при попытке сериализации e произошла ошибка
+    message += `Критическая ошибка при обработке входящего запроса (e): ${err.message}\nСтек: ${err.stack}`;
+    Logger.log(`ADMIN_NOTIFY: CRITICAL - Ошибка при обработке входящего запроса (e): ${err.message} ${err.stack}`);
   }
-}
 
-/**
- * Обрабатывает входящий запрос в основном (боевом) режиме.
- */
-function handleRequest(e) {
-  let chatId, data;
+  // Отправляем уведомление администратору
   try {
-    if (!e || !e.postData || !e.postData.contents) {
-      Logger.log("Пустой запрос от Telegram.");
-      return;
+    const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
+    const payload = { 
+      chat_id: String(adminChatId), 
+      text: message,
+      parse_mode: 'Markdown', // Используем Markdown для форматирования
+      disable_web_page_preview: true // Отключаем превью ссылок
+    };
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true // Важно, чтобы видеть полные ответы об ошибках
+    };
+    
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+    const responseBody = response.getContentText();
+
+    if (responseCode !== 200) {
+      Logger.log(`ADMIN_NOTIFY: ERROR - Не удалось отправить сообщение админу. Статус: ${responseCode}. Ответ: ${responseBody}`);
+    } else {
+      Logger.log(`ADMIN_NOTIFY: Уведомление админу успешно отправлено. Содержимое: ${message.substring(0, 100)}...`);
     }
-    data = JSON.parse(e.postData.contents);
-
-    if (data.callback_query) {
-      handleCallbackQuery(data.callback_query);
-      return;
-    }
-
-    if (data.message && data.message.chat && data.message.text) {
-      chatId = data.message.chat.id;
-      const msgRaw = data.message.text.trim();
-      const msg = msgRaw.toLowerCase();
-      const session = getSession(chatId);
-
-      if (session && session.awaitingInput && isCommand(msg)) {
-        clearSession(chatId);
-        handleCommand(chatId, msg, msgRaw);
-      } else if (session && session.awaitingInput) {
-        handleUserInput(chatId, msgRaw, session);
-      } else {
-        handleCommand(chatId, msg, msgRaw);
-      }
-      return;
-    }
-
-    Logger.log("Неподдерживаемый тип запроса: " + e.postData.contents);
 
   } catch (err) {
-    chatId = (data && data.message) ? data.message.chat.id : (data && data.callback_query) ? data.callback_query.from.id : null;
-    if (chatId) {
-      sendText(chatId, `--- КРИТИЧЕСКАЯ ОШИБКА ---\nСообщение: ${err.message}\nСтек: ${err.stack}`);
-    }
-    Logger.log(`Критическая ошибка в doPost: ${err.message} ${err.stack}`);
+    // Если даже отправка админу не удалась, мы уже ничего не можем поделать.
+    // Эта ошибка будет видна только в логах Google Apps Script.
+    Logger.log(`ADMIN_NOTIFY: CRITICAL - Не удалось отправить сообщение админу (UrlFetchApp сбой): ${err.message}\nСтек: ${err.stack}`);
   }
 }
