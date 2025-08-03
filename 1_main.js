@@ -101,9 +101,12 @@ function handleCallbackQuery(callbackQuery) {
 
 // --- Обработка команд ---
 function handleCommand(chatId, msg, msgRaw) {
+  if (msg === '/start') {
+    onboardUser(chatId); // Создаем инфраструктуру, если ее нет
+    return sendStart(chatId);
+  }
+
   switch (msg) {
-    case '/start':
-      return sendStart(chatId);
     case '⚙️ настройки':
       return sendSettingsMenu(chatId);
     case '⬅️ назад':

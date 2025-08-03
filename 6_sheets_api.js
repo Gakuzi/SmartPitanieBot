@@ -1,9 +1,27 @@
+function getUserSheet(chatId) {
+  const userData = getUserData(chatId);
+  const sheetId = userData.sheetId;
+  if (!sheetId) {
+    sendText(chatId, "Ваша персональная таблица данных не найдена. Попробуйте выполнить команду /start для ее создания.");
+    return null;
+  }
+  try {
+    return SpreadsheetApp.openById(sheetId);
+  } catch (e) {
+    Logger.log(`Ошибка открытия таблицы для пользователя ${chatId} с ID ${sheetId}: ${e.message}`);
+    sendText(chatId, "Не удалось открыть вашу персональную таблицу данных. Обратитесь к администратору.");
+    return null;
+  }
+}
+
 // --- Функции отправки данных из таблицы ---
 function sendTodayMenu(chatId) {
-  const sheet = SpreadsheetApp.openByUrl(SPREADSHEET_URL).getSheetByName("Меню по дням");
+  const sheet = getUserSheet(chatId);
+  if (!sheet) return;
+  const menuSheet = sheet.getSheetByName("Меню по дням");
   const today = new Date();
   const dayNum = (today.getDate() % 20) + 1;
-  const data = sheet.getDataRange().getValues();
+  const data = menuSheet.getDataRange().getValues();
   const row = data.find(r => r[0] === dayNum);
   if (!row) return sendText(chatId, "Меню на сегодня не найдено.", getMenu(chatId));
 
@@ -20,8 +38,10 @@ function sendTodayMenu(chatId) {
 }
 
 function sendShoppingList(chatId) {
-  const sheet = SpreadsheetApp.openByUrl(SPREADSHEET_URL).getSheetByName("Список покупок");
-  const data = sheet.getDataRange().getValues();
+  const sheet = getUserSheet(chatId);
+  if (!sheet) return;
+  const shopSheet = sheet.getSheetByName("Список покупок");
+  const data = shopSheet.getDataRange().getValues();
   const today = new Date().toLocaleDateString("ru-RU");
   const todayItems = data.filter(r => r[0] === today);
 
@@ -32,8 +52,10 @@ function sendShoppingList(chatId) {
 }
 
 function sendCookingList(chatId) {
-  const sheet = SpreadsheetApp.openByUrl(SPREADSHEET_URL).getSheetByName("Готовка");
-  const data = sheet.getDataRange().getValues();
+  const sheet = getUserSheet(chatId);
+  if (!sheet) return;
+  const cookSheet = sheet.getSheetByName("Готовка");
+  const data = cookSheet.getDataRange().getValues();
   const today = new Date().toLocaleDateString("ru-RU");
   const todayCook = data.filter(r => r[0] === today);
 
@@ -44,12 +66,14 @@ function sendCookingList(chatId) {
 }
 
 function sendSubstitute(chatId, msg) {
+  const sheet = getUserSheet(chatId);
+  if (!sheet) return;
+  const subSheet = sheet.getSheetByName("Замены");
   const parts = msg.split(" ");
   if (parts.length < 3) return sendText(chatId, "Укажите продукт после слова 'замена', например:\n🔄 замена творог", getMenu(chatId));
   const target = parts.slice(2).join(" ").toLowerCase();
 
-  const sheet = SpreadsheetApp.openByUrl(SPREADSHEET_URL).getSheetByName("Замены");
-  const data = sheet.getDataRange().getValues();
+  const data = subSheet.getDataRange().getValues();
   const row = data.find(r => r[0].toLowerCase() === target);
 
   if (!row) return sendText(chatId, `Нет информации о заменах для "${target}".`, getMenu(chatId));

@@ -64,3 +64,44 @@ function clearSession(chatId) {
   const userProps = PropertiesService.getUserProperties();
   userProps.deleteProperty('session_' + chatId);
 }
+
+// --- Онбординг и создание инфраструктуры для нового пользователя ---
+function onboardUser(chatId) {
+  const userProps = PropertiesService.getUserProperties();
+  const userData = getUserData(chatId);
+
+  // Если у пользователя уже есть таблица, ничего не делаем
+  if (userData.sheetId) {
+    return;
+  }
+
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const rootFolderId = scriptProps.getProperty('ROOT_FOLDER_ID');
+    const templateSheetId = scriptProps.getProperty('TEMPLATE_SHEET_ID');
+
+    if (!rootFolderId || !templateSheetId) {
+      throw new Error("Ключевые ID инфраструктуры не найдены. Запустите setupProjectInfrastructure().");
+    }
+
+    const rootFolder = DriveApp.getFolderById(rootFolderId);
+    const templateFile = DriveApp.getFileById(templateSheetId);
+
+    // 1. Создаем персональную папку
+    const userFolder = rootFolder.createFolder(String(chatId));
+    
+    // 2. Копируем шаблонную таблицу в папку пользователя
+    const userSheet = templateFile.makeCopy(`SmartPit_Sheet_${chatId}`, userFolder);
+    const userSheetId = userSheet.getId();
+
+    // 3. Сохраняем ID таблицы и папки в данных пользователя
+    saveUserParam(chatId, 'sheetId', userSheetId);
+    saveUserParam(chatId, 'folderId', userFolder.getId());
+
+    Logger.log(`✅ Успешно создана инфраструктура для пользователя ${chatId}. ID таблицы: ${userSheetId}`);
+
+  } catch (e) {
+    Logger.log(`❌ Ошибка при создании инфраструктуры для пользователя ${chatId}: ${e.message}`);
+    sendText(chatId, "Произошла критическая ошибка при настройке вашего аккаунта. Пожалуйста, свяжитесь с администратором.");
+  }
+}
