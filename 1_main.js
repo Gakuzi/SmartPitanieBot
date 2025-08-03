@@ -102,11 +102,15 @@ function handleCallbackQuery(callbackQuery) {
 // --- Обработка команд ---
 function handleCommand(chatId, msg, msgRaw) {
   if (msg === '/start') {
+    sendText(chatId, "DEBUG: /start command received.");
     onboardUser(chatId); // Создаем инфраструктуру, если ее нет
+    sendText(chatId, "DEBUG: Onboarding complete.");
     
     // Запускаем диалог с AI для знакомства
     const prompt = "Ты — дружелюбный AI-диетолог в телеграм-боте \"СмартЕда\". Твоя задача — познакомиться с новым пользователем. Задай ему один-два приветственных вопроса, чтобы начать диалог. Например, спроси, как его зовут и какой у него опыт в подсчете калорий. Говори кратко и по делу.";
-    const aiResponse = callGemini(prompt);
+    sendText(chatId, "DEBUG: Calling Gemini...");
+    const aiResponse = callGemini(prompt, chatId);
+    sendText(chatId, `DEBUG: Gemini response received: ${aiResponse}`);
     
     if (aiResponse) {
       startSession(chatId, 'awaiting_intro_response');
@@ -116,6 +120,7 @@ function handleCommand(chatId, msg, msgRaw) {
     }
     return;
   }
+
 
   switch (msg) {
     case '⚙️ настройки':
