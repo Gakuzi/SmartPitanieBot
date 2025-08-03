@@ -1,1 +1,1 @@
-const TELEGRAM_TOKEN = '8368578615:AAF6fDpa28k2a_LG0pa3dcn4mvmLTU2GqQY';
+// В этом файле больше нет констант. Все секреты хранятся в ScriptProperties.

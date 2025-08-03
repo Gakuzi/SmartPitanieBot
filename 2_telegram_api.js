@@ -1,6 +1,12 @@
 // --- Функции отправки сообщений ---
 function sendText(chatId, text, keyboard = null) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+  if (!telegramToken) {
+    Logger.log("FATAL: TELEGRAM_TOKEN не найден в ScriptProperties!");
+    return;
+  }
+
+  const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
   const payload = {
     chat_id: String(chatId),
     text: text,
@@ -12,16 +18,23 @@ function sendText(chatId, text, keyboard = null) {
     method: 'post',
     contentType: 'application/json',
     payload: JSON.stringify(payload),
+    muteHttpExceptions: true
   };
   try {
-    UrlFetchApp.fetch(url, options);
+    const response = UrlFetchApp.fetch(url, options);
+    if (response.getResponseCode() !== 200) {
+      Logger.log(`ERROR sending message to ${chatId}. Response: ${response.getContentText()}`);
+    }
   } catch (e) {
-    Logger.log(`ERROR sending message to ${chatId}: ${e.message}`);
+    Logger.log(`CRITICAL ERROR sending message to ${chatId}: ${e.message}`);
   }
 }
 
 function editMessageText(chatId, messageId, text) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/editMessageText`;
+  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+  if (!telegramToken) return;
+
+  const url = `https://api.telegram.org/bot${telegramToken}/editMessageText`;
   const payload = {
     chat_id: String(chatId),
     message_id: messageId,
@@ -41,6 +54,9 @@ function editMessageText(chatId, messageId, text) {
 }
 
 function answerCallbackQuery(callbackQueryId) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/answerCallbackQuery`;
+  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+  if (!telegramToken) return;
+  
+  const url = `https://api.telegram.org/bot${telegramToken}/answerCallbackQuery`;
   UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', payload: JSON.stringify({ callback_query_id: callbackQueryId }) });
 }
