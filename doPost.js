@@ -21,15 +21,20 @@ function doPost(e) {
  */
 function handleEchoTest(e) {
   try {
+    const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+    
+    // Логируем часть токена для проверки, не раскрывая его целиком
+    if (telegramToken) {
+      const tokenPart = `${telegramToken.substring(0, 4)}...${telegramToken.slice(-4)}`;
+      Logger.log(`ECHO_TEST: Используется токен, начинающийся и заканчивающийся на: ${tokenPart}`);
+    } else {
+      Logger.log("ECHO_TEST: FATAL - TELEGRAM_TOKEN не найден в ScriptProperties!");
+      return;
+    }
+
     const data = JSON.parse(e.postData.contents);
     const chatId = data.message.chat.id;
     const text = data.message.text;
-
-    const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
-    if (!telegramToken) {
-      Logger.log("ECHO_TEST: FATAL - TELEGRAM_TOKEN не найден!");
-      return;
-    }
 
     const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
     const payload = { chat_id: String(chatId), text: `Эхо: ${text}` };
