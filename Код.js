@@ -1,91 +1,91 @@
 const TELEGRAM_TOKEN = '8368578615:AAF6fDpa28k2a_LG0pa3dcn4mvmLTU2GqQY';
 const SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1EK0i774b668t6bZEE3iTgtbHAs3OUyXdCpuOYxxMWHE/edit';
 
-const userProps = PropertiesService.getUserProperties();
-const scriptProps = PropertiesService.getScriptProperties();
-
-// --- Эхо-бот для проверки связи ---
+// --- Основная функция обработки входящих сообщений ---
 function doPost(e) {
+  let data, chatId;
   try {
-    const data = JSON.parse(e.postData.contents);
-    const chatId = data.message.chat.id;
-    const text = data.message.text;
-    sendText(chatId, `Вы сказали: ${text}`);
-    Logger.log(`Echoed: ${text} to ${chatId}`);
-  } catch (error) {
-    Logger.log('Error in echo bot: ' + error.message);
-    Logger.log('Received data: ' + JSON.stringify(e.postData.contents));
-  }
-}
-
-/*
-// --- Оригинальная функция doPost (закомментирована) ---
-function doPost(e) {
-  Logger.log(JSON.stringify(e.postData.contents));
-  let data;
-  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      return; // Нечего делать, если нет данных
+    }
     data = JSON.parse(e.postData.contents);
-  } catch (error) {
-    Logger.log('Error parsing JSON: ' + error.message);
-    return; // Exit if JSON is invalid
-  }
 
-  // Check if it's a message update and has text
-  if (!data || !data.message || !data.message.chat || !data.message.text) {
-    Logger.log('Received update is not a text message or missing required fields.');
-    // Handle other update types if necessary, or just ignore
-    return;
-  }
+    // Обрабатываем только текстовые сообщения
+    if (!data.message || !data.message.chat || !data.message.text) {
+      return;
+    }
 
-  const chatId = data.message.chat.id;
-  const msgRaw = data.message.text.trim();
-  const msg = msgRaw.toLowerCase();
+    chatId = data.message.chat.id;
+    const msgRaw = data.message.text.trim();
+    const msg = msgRaw.toLowerCase();
 
-  let session = getSession(chatId);
+    const session = getSession(chatId);
 
-  if (session.awaitingInput) {
-    handleUserInput(chatId, msgRaw, session);
-    return;
-  }
+    if (session && session.awaitingInput) {
+      handleUserInput(chatId, msgRaw, session);
+    } else {
+      handleCommand(chatId, msg, msgRaw);
+    }
 
-  switch (msg) {
-    case '/start':
-      return sendStart(chatId);
-    case '🥅 установить цель':
-      startSession(chatId, 'awaitGoal');
-      return sendText(chatId, 'Выбери цель: похудение / набор / удержание веса');
-    case '⚖️ ввести параметры':
-      startSession(chatId, 'awaitParams');
-      return sendText(chatId, 'Введи через запятую: вес(кг), рост(см), возраст, пол(m/f), уровень активности(низкий/средний/высокий)');
-    case '🕒 установить время уведомлений':
-      startSession(chatId, 'awaitNotifyTime');
-      return sendText(chatId, 'Введите время уведомлений в формате ЧЧ:ММ (например, 07:30)');
-    case '🍽 показать меню':
-      return sendTodayMenu(chatId);
-    case '🛒 список покупок':
-      return sendShoppingList(chatId);
-    case '👨‍🍳 что готовим?':
-      return sendCookingList(chatId);
-    case '🔄 замена продукта':
-      return sendText(chatId, 'Напиши, например: 🔄 замена творог');
-    default:
-      if (msg.startsWith('🔄 замена')) return sendSubstitute(chatId, msgRaw);
-      return sendMenu(chatId);
+  } catch (err) {
+    // Глобальный обработчик ошибок, на всякий случай
+    if (chatId) {
+        sendText(chatId, `Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз.`);
+    }
+    Logger.log(`Критическая ошибка в doPost: ${err.message} ${err.stack}`);
   }
 }
-*/
+
+// --- Обработка команд ---
+function handleCommand(chatId, msg, msgRaw) {
+    switch (msg) {
+        case '/start':
+            return sendStart(chatId);
+        case '🥅 установить цель':
+            startSession(chatId, 'awaitGoal');
+            return sendText(chatId, 'Выбери цель: похудение / набор / удержание веса');
+        case '⚖️ ввести параметры':
+            startSession(chatId, 'awaitParams');
+            return sendText(chatId, 'Введи через запятую: вес(кг), рост(см), возраст, пол(m/f), уровень активности(низкий/средний/высокий)');
+        case '🕒 установить время уведомлений':
+            startSession(chatId, 'awaitNotifyTime');
+            return sendText(chatId, 'Введите время уведомлений в формате ЧЧ:ММ (например, 07:30)');
+        case '🍽 показать меню':
+            return sendTodayMenu(chatId);
+        case '🛒 список покупок':
+            return sendShoppingList(chatId);
+        case '👨‍🍳 что готовим?':
+            return sendCookingList(chatId);
+        case '🔄 замена продукта':
+            return sendText(chatId, 'Напиши, например: 🔄 замена творог');
+        default:
+            if (msg.startsWith('🔄 замена')) return sendSubstitute(chatId, msgRaw);
+            return sendMenu(chatId);
+    }
+}
 
 // --- Сессии для пользовательского ввода ---
 function getSession(chatId) {
+  const userProps = PropertiesService.getUserProperties();
   let s = userProps.getProperty('session_' + chatId);
-  return s ? JSON.parse(s) : {};
+  if (s) {
+    try {
+      return JSON.parse(s);
+    } catch (e) {
+      clearSession(chatId);
+      return {};
+    }
+  }
+  return {};
 }
 
 function startSession(chatId, awaitingInput) {
+  const userProps = PropertiesService.getUserProperties();
   userProps.setProperty('session_' + chatId, JSON.stringify({ awaitingInput }));
 }
 
 function clearSession(chatId) {
+  const userProps = PropertiesService.getUserProperties();
   userProps.deleteProperty('session_' + chatId);
 }
 
@@ -130,11 +130,18 @@ function handleUserInput(chatId, input, session) {
         sendText(chatId, 'Неверный формат времени. Введи в формате ЧЧ:ММ');
       }
       break;
+
+    default:
+      // Если бот ожидал чего-то, чего мы не знаем, сбрасываем сессию
+      clearSession(chatId);
+      sendText(chatId, 'Произошла небольшая ошибка. Ваше предыдущее действие было сброшено. Пожалуйста, выберите команду из меню еще раз.', getMenu(chatId));
+      break;
   }
 }
 
 // --- Сохранение и получение данных пользователя ---
 function saveUserParam(chatId, key, value) {
+  const userProps = PropertiesService.getUserProperties();
   let userData = getUserData(chatId);
   userData[key] = value;
   userProps.setProperty('user_' + chatId, JSON.stringify(userData));
@@ -142,17 +149,25 @@ function saveUserParam(chatId, key, value) {
 }
 
 function getUserData(chatId) {
+  const userProps = PropertiesService.getUserProperties();
   let data = userProps.getProperty('user_' + chatId);
-  return data ? JSON.parse(data) : {};
+  // Добавим защиту от невалидного JSON
+  try {
+      return data ? JSON.parse(data) : {};
+  } catch (e) {
+      return {};
+  }
 }
 
 // --- Регистрация пользователя в общем списке ---
 function getAllUsers() {
+  const scriptProps = PropertiesService.getScriptProperties();
   const usersJson = scriptProps.getProperty('all_users') || '[]';
   return JSON.parse(usersJson);
 }
 
 function addUser(chatId) {
+  const scriptProps = PropertiesService.getScriptProperties();
   let users = getAllUsers();
   if (!users.includes(chatId)) {
     users.push(chatId);
@@ -197,7 +212,7 @@ function validateTimeFormat(timeStr) {
 function sendText(chatId, text, keyboard = null) {
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   const payload = {
-    chat_id: chatId,
+    chat_id: String(chatId),
     text: text,
     parse_mode: 'Markdown',
     disable_web_page_preview: true,
@@ -208,7 +223,11 @@ function sendText(chatId, text, keyboard = null) {
     contentType: 'application/json',
     payload: JSON.stringify(payload),
   };
-  UrlFetchApp.fetch(url, options);
+  try {
+    UrlFetchApp.fetch(url, options);
+  } catch (e) {
+    Logger.log(`ERROR sending message to ${chatId}: ${e.message}`);
+  }
 }
 
 // --- Функции отправки данных из таблицы ---
@@ -275,7 +294,6 @@ function sendSubstitute(chatId, msg) {
 }
 
 // --- Авторассылка по времени пользователя ---
-// В редакторе GAS создать триггер на функцию sendDailyNotifications, например, каждую минуту.
 function sendDailyNotifications() {
   const allUsers = getAllUsers();
   const now = new Date();
