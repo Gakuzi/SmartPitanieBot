@@ -165,6 +165,10 @@ function sendMenu(chatId) {
   sendText(chatId, "Выберите действие:", getMenu(chatId));
 }
 
+function sendStart(chatId) {
+  sendText(chatId, "Добро пожаловать! Я ваш помощник по питанию. Выберите действие из меню:", getMenu(chatId));
+}
+
 // --- Проверка формата времени ---
 function validateTimeFormat(timeStr) {
   return /^\d{2}:\d{2}$/.test(timeStr) &&
