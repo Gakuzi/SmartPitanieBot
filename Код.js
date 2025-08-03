@@ -66,6 +66,10 @@ function handleCommand(chatId, msg, msgRaw) {
   switch (msg) {
     case '/start':
       return sendStart(chatId);
+    case '⚙️ настройки':
+      return sendSettingsMenu(chatId);
+    case '⬅️ назад':
+      return sendMenu(chatId);
     case '🥅 установить цель':
       return sendGoalOptions(chatId);
     case '⚖️ ввести параметры':
@@ -256,15 +260,27 @@ function getMenu(chatId) {
 
   return {
     keyboard: [
-      [{ text: "🥅 Установить цель" }, { text: "⚖️ Ввести параметры" }],
-      [{ text: "🕒 Установить время уведомлений" }, { text: "🍽 Показать меню" }],
-      [{ text: "🛒 Список покупок" }, { text: "👨‍🍳 Что готовим?" }],
-      [{ text: "🔄 Замена продукта" }],
+      [{ text: "🍽 Показать меню" }, { text: "🛒 Список покупок" }],
+      [{ text: "👨‍🍳 Что готовим?" }, { text: "🔄 Замена продукта" }],
+      [{ text: "⚙️ Настройки" }],
       [{ text: `⏰ Текущее время уведомлений: ${notifyTime}` }]
     ],
     resize_keyboard: true,
     one_time_keyboard: false
   };
+}
+
+function sendSettingsMenu(chatId) {
+  const keyboard = {
+    keyboard: [
+      [{ text: "🥅 Установить цель" }, { text: "⚖️ Ввести параметры" }],
+      [{ text: "🕒 Установить время уведомлений" }],
+      [{ text: "⬅️ Назад" }]
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false
+  };
+  sendText(chatId, "Выберите настройку:", keyboard);
 }
 
 function sendGoalOptions(chatId) {
