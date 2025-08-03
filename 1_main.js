@@ -7,50 +7,6 @@ function isCommand(msg) {
   return ALL_COMMANDS.includes(msg.toLowerCase());
 }
 
-// --- Основная функция обработки входящих запросов ---
-function doPost(e) {
-  let chatId, data;
-  try {
-    if (!e || !e.postData || !e.postData.contents) {
-      Logger.log("Пустой запрос от Telegram.");
-      return;
-    }
-    data = JSON.parse(e.postData.contents);
-
-    if (data.callback_query) {
-      handleCallbackQuery(data.callback_query);
-      return;
-    }
-
-    if (data.message && data.message.chat && data.message.text) {
-      chatId = data.message.chat.id;
-      const msgRaw = data.message.text.trim();
-      const msg = msgRaw.toLowerCase();
-      const session = getSession(chatId);
-
-      // Проверяем, не является ли сообщение новой командой, прерывающей текущий ввод
-      if (session && session.awaitingInput && isCommand(msg)) {
-        clearSession(chatId);
-        handleCommand(chatId, msg, msgRaw); // Выполняем новую команду
-      } else if (session && session.awaitingInput) {
-        handleUserInput(chatId, msgRaw, session); // Продолжаем ввод
-      } else {
-        handleCommand(chatId, msg, msgRaw); // Обычная обработка команд
-      }
-      return;
-    }
-
-    Logger.log("Неподдерживаемый тип запроса: " + e.postData.contents);
-
-  } catch (err) {
-    chatId = (data && data.message) ? data.message.chat.id : (data && data.callback_query) ? data.callback_query.from.id : null;
-    if (chatId) {
-      sendText(chatId, `--- КРИТИЧЕСКАЯ ОШИБКА ---\nСообщение: ${err.message}\nСтек: ${err.stack}`);
-    }
-    Logger.log(`Критическая ошибка в doPost: ${err.message} ${err.stack}`);
-  }
-}
-
 // --- Обработка нажатий на встроенные кнопки ---
 function handleCallbackQuery(callbackQuery) {
   const chatId = callbackQuery.from.id;
