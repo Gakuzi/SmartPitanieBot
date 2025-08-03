@@ -103,7 +103,18 @@ function handleCallbackQuery(callbackQuery) {
 function handleCommand(chatId, msg, msgRaw) {
   if (msg === '/start') {
     onboardUser(chatId); // Создаем инфраструктуру, если ее нет
-    return sendStart(chatId);
+    
+    // Запускаем диалог с AI для знакомства
+    const prompt = "Ты — дружелюбный AI-диетолог в телеграм-боте \"СмартЕда\". Твоя задача — познакомиться с новым пользователем. Задай ему один-два приветственных вопроса, чтобы начать диалог. Например, спроси, как его зовут и какой у него опыт в подсчете калорий. Говори кратко и по делу.";
+    const aiResponse = callGemini(prompt);
+    
+    if (aiResponse) {
+      startSession(chatId, 'awaiting_intro_response');
+      sendText(chatId, aiResponse);
+    } else {
+      sendText(chatId, "Здравствуйте! Я ваш помощник по питанию. К сожалению, мой AI-модуль сейчас не в сети. Давайте пока воспользуемся стандартными функциями.", getMenu(chatId));
+    }
+    return;
   }
 
   switch (msg) {
@@ -164,6 +175,27 @@ function handleUserInput(chatId, input, session) {
       session.data.age = Number(input);
       updateSession(chatId, 'awaiting_sex', session.data);
       sendSexOptions(chatId);
+      break;
+
+    case 'awaiting_intro_response':
+      // Просто передаем ответ пользователя AI для продолжения диалога
+      const prompt = `Ты — AI-диетолог. Пользователь ответил на твое первое приветствие. Его ответ: "${input}". Продолжи диалог, задай уточняющие вопросы, чтобы собрать информацию для составления меню (пищевые привычки, аллергии, предпочтения). Будь кратким и веди диалог шаг за шагом. В конце, когда соберешь достаточно информации, скажи: "Отлично, я собрал всю информацию! Теперь мы можем перейти к расчету вашего КБЖУ и созданию меню."`;
+      const aiResponse = callGemini(prompt);
+      if (aiResponse) {
+        sendText(chatId, aiResponse);
+        // Если AI решил, что информации достаточно, можно переходить к следующему шагу
+        if (aiResponse.includes("Отлично, я собрал всю информацию")) {
+          clearSession(chatId);
+          // Здесь в будущем будет запуск расчета КБЖУ и генерации меню
+          sendMenu(chatId);
+        } else {
+          // Продолжаем диалог
+          startSession(chatId, 'awaiting_intro_response');
+        }
+      } else {
+        sendText(chatId, "Произошла ошибка AI. Попробуйте позже.", getMenu(chatId));
+        clearSession(chatId);
+      }
       break;
 
     case 'awaitNotifyTime':
