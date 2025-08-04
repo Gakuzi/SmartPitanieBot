@@ -447,14 +447,11 @@ function clearCurrentSheet() {
  */
 function getMenu(chatId) {
   return {
-    reply_markup: {
-      keyboard: [
-        [{ text: '/купить' }, { text: '/готовим' }],
-        [{ text: '/меню' }, { text: '/осталось' }],
-        [{ text: '/start' }]
-      ],
-      resize_keyboard: true,
-      one_time_keyboard: false
-    }
+    keyboard: [
+      [{ text: '🍽 Показать меню' }, { text: '🛒 Список покупок' }],
+      [{ text: '⚙️ Настройки' }, { text: '🔄 Замена продукта' }]
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false
   };
 }
