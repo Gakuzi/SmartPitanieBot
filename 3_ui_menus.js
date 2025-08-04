@@ -45,6 +45,29 @@ function runAdminAction(actionName) {
 // --- Диалоговые окна в Google Sheets ---
 
 /**
+ * Создает кастомное меню в интерфейсе Google Sheets.
+ */
+function createCustomMenu() {
+  const ui = SpreadsheetApp.getUi();
+  const adminMenu = ui.createMenu('Администрирование');
+
+  adminMenu.addItem('Открыть панель администратора', 'showAdminPanel');
+  adminMenu.addSeparator();
+  adminMenu.addItem('Настроить таблицу', 'setupAdminSheet');
+  adminMenu.addItem('Управление вебхуком', 'showWebhookManagerDialog');
+  adminMenu.addSeparator();
+  adminMenu.addItem('Снять/Установить защиту листов', 'toggleSheetProtection');
+  adminMenu.addSeparator();
+
+  const settingsSubMenu = ui.createMenu('Настройки')
+      .addItem('Установить токен Telegram', 'setTelegramToken')
+      .addItem('Установить ключ Gemini', 'setGeminiApiKey');
+      
+  adminMenu.addSubMenu(settingsSubMenu);
+  adminMenu.addToUi();
+}
+
+/**
  * Показывает диалоговое окно для управления вебхуком.
  */
 function showWebhookManagerDialog() {
