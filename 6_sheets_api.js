@@ -100,3 +100,37 @@ function sendDailyNotifications() {
     }
   });
 }
+
+/**
+ * Сохраняет сгенерированное AI меню в таблицу пользователя.
+ * @param {string|number} chatId - ID чата.
+ * @param {object} menu - Объект меню, сгенерированный AI.
+ */
+function saveMenuToSheet(chatId, menu) {
+  const sheet = getUserSheet(chatId);
+  if (!sheet) return;
+
+  let menuSheet = sheet.getSheetByName("Меню от AI");
+  if (!menuSheet) {
+    menuSheet = sheet.insertSheet("Меню от AI");
+    menuSheet.appendRow(["Дата", "Прием пищи", "Блюдо", "Описание", "Ккал", "Белки", "Жиры", "Углеводы", "Ингредиенты", "Инструкции"]);
+  }
+
+  const today = new Date().toLocaleDateString("ru-RU");
+  menu.meals.forEach(meal => {
+    menuSheet.appendRow([
+      today,
+      meal.name,
+      meal.recipe_name,
+      meal.description,
+      meal.calories,
+      meal.proteins,
+      meal.fats,
+      meal.carbs,
+      meal.ingredients.map(i => `${i.name} (${i.amount})`).join(", "),
+      meal.instructions.join("\n")
+    ]);
+  });
+
+  sendText(chatId, "✅ Меню успешно сохранено в вашу Google Таблицу.", getMenu(chatId));
+}

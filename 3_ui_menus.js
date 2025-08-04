@@ -455,3 +455,12 @@ function getMenu(chatId) {
     one_time_keyboard: false
   };
 }
+
+/**
+ * Отправляет главное меню с основной клавиатурой.
+ * @param {string|number} chatId - ID чата.
+ */
+function sendMenu(chatId) {
+  const text = 'Чем могу помочь?';
+  sendText(chatId, text, getMenu(chatId));
+}

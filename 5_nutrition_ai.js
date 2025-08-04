@@ -222,17 +222,20 @@ function handleFreeText(chatId, text) {
 
 Ответь ему в своей роли, учитывая его данные. Будь кратким и полезным. 
 
+После своего ответа, предложи пользователю релевантные действия с помощью кнопок. Например, если вы обсуждаете меню, предложи кнопки "Сохранить меню" или "Сгенерировать список покупок".
+
 Используй Markdown для форматирования ответа:
 - *Курсив* для выделения.
 - **Жирный** для важных моментов.
 - `Код` для рецептов или списков продуктов, которые можно скопировать.
 - > Цитата для советов или важных замечаний.
 
-Твой ответ должен быть в формате JSON вида: {"response": "Твой отформатированный ответ"}.`;
+Твой ответ должен быть в формате JSON вида: {"response": "Твой отформатированный ответ", "buttons": [{"text": "Текст кнопки", "callback_data": "action:value"}]}.`;
   const aiResponse = callGemini(prompt, true); // Запрашиваем JSON
 
   if (aiResponse && aiResponse.response) {
-    sendText(chatId, aiResponse.response, getMenu(chatId));
+    const keyboard = aiResponse.buttons ? { inline_keyboard: [aiResponse.buttons] } : getMenu(chatId);
+    sendText(chatId, aiResponse.response, keyboard);
   } else if (aiResponse && aiResponse.error) {
     Logger.log(`Ошибка AI при свободном общении для ${chatId}: ${aiResponse.details}`);
     sendText(chatId, `Произошла ошибка AI: ${aiResponse.error}. Попробуйте позже.`, getMenu(chatId));
