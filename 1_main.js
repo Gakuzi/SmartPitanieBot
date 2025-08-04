@@ -7,6 +7,22 @@ function isCommand(msg) {
   return ALL_COMMANDS.includes(msg.toLowerCase());
 }
 
+function routeMessage(data) {
+  if (data.callback_query) {
+    handleCallbackQuery(data.callback_query);
+  } else if (data.message) {
+    const chatId = data.message.chat.id;
+    const text = data.message.text ? data.message.text.trim() : '';
+    const session = getSession(chatId);
+
+    if (isCommand(text)) {
+      handleCommand(chatId, text, text, data.message);
+    } else {
+      handleUserInput(chatId, text, session);
+    }
+  }
+}
+
 // --- Обработка нажатий на встроенные кнопки ---
 function handleCallbackQuery(callbackQuery) {
   const chatId = callbackQuery.from.id;
@@ -95,91 +111,102 @@ function handleCommand(chatId, msg, msgRaw, messageData) {
 // --- Сессии для пользовательского ввода ---
 function handleUserInput(chatId, input, session) {
   Logger.log(`handleUserInput: Вызвана для chatId: ${chatId}, input: ${input}, awaitingInput: ${session.awaitingInput}`);
-  switch (session.awaitingInput) {
-    case 'awaiting_name_confirmation':
-      const lowerInput = input.toLowerCase();
-      let userNameToSave;
+  if (session.awaitingInput) {
+    switch (session.awaitingInput) {
+      case 'awaiting_name_confirmation':
+        const lowerInput = input.toLowerCase();
+        let userNameToSave;
 
-      if (lowerInput.includes('да') || lowerInput.includes('верно') || lowerInput.includes('yes')) {
-        // User confirmed the Telegram name
-        const telegramUser = session.data.telegramUser;
-        userNameToSave = telegramUser.first_name || telegramUser.username || 'Пользователь';
-        sendText(chatId, `Отлично, ${userNameToSave}!`);
-      } else {
-        // User provided a different name or wants to specify
-        userNameToSave = input;
-        sendText(chatId, `Хорошо, буду обращаться к тебе как ${userNameToSave}.`);
-      }
-      saveUserParam(chatId, 'name', userNameToSave); // Save the user's preferred name
-      updateSession(chatId, 'awaiting_weight', session.data); // Transition to awaiting weight
-      sendText(chatId, 'Теперь введите ваш вес в килограммах (например, 70):');
-      break;
-
-    case 'awaiting_weight':
-      if (isNaN(input) || input <= 0) {
-        sendText(chatId, 'Неверный формат. Введите вес числом, например: 70');
-        return;
-      }
-      session.data.weight = Number(input);
-      updateSession(chatId, 'awaiting_height', session.data);
-      sendText(chatId, 'Отлично! Теперь введите ваш рост в сантиметрах (например, 175):');
-      break;
-
-    case 'awaiting_height':
-      if (isNaN(input) || input <= 0) {
-        sendText(chatId, 'Неверный формат. Введите рост числом, например: 175');
-        return;
-      }
-      session.data.height = Number(input);
-      updateSession(chatId, 'awaiting_age', session.data);
-      sendText(chatId, 'Принято. Сколько вам полных лет?');
-      break;
-
-    case 'awaiting_age':
-      if (isNaN(input) || input <= 0) {
-        sendText(chatId, 'Неверный формат. Введите возраст числом, например: 30');
-        return;
-      }
-      session.data.age = Number(input);
-      updateSession(chatId, 'awaiting_sex', session.data);
-      sendSexOptions(chatId);
-      break;
-
-    case 'awaiting_intro_response':
-      // Просто передаем ответ пользователя AI для продолжения диалога
-      const prompt = `Ты — AI-диетолог. Пользователь ответил на твое первое приветствие. Его ответ: "${input}". Продолжи диалог, задай уточняющие вопросы, чтобы собрать информацию для составления меню (пищевые привычки, аллергии, предпочтения). Будь кратким и веди диалог шаг за шагом. В конце, когда соберешь достаточно информации, скажи: "Отлично, я собрал всю информацию! Теперь мы можем перейти к расчету вашего КБЖУ и созданию меню."`;
-      const aiResponse = callGemini(prompt);
-      if (aiResponse) {
-        sendText(chatId, aiResponse);
-        // Если AI решил, что информации достаточно, можно переходить к следующему шагу
-        if (aiResponse.includes("Отлично, я собрал всю информацию")) {
-          clearSession(chatId);
-          // Здесь в будущем будет запуск расчета КБЖУ и генерации меню
-          sendMenu(chatId);
+        if (lowerInput.includes('да') || lowerInput.includes('верно') || lowerInput.includes('yes')) {
+          // User confirmed the Telegram name
+          const telegramUser = session.data.telegramUser;
+          userNameToSave = telegramUser.first_name || telegramUser.username || 'Пользователь';
+          sendText(chatId, `Отлично, ${userNameToSave}!`);
         } else {
-          // Продолжаем диалог
-          startSession(chatId, 'awaiting_intro_response');
+          // User provided a different name or wants to specify
+          userNameToSave = input;
+          sendText(chatId, `Хорошо, буду обращаться к тебе как ${userNameToSave}.`);
         }
-      } else {
-        sendText(chatId, "Произошла ошибка AI. Попробуйте позже.", getMenu(chatId));
-        clearSession(chatId);
-      }
-      break;
+        saveUserParam(chatId, 'name', userNameToSave); // Save the user's preferred name
+        updateSession(chatId, 'awaiting_weight', session.data); // Transition to awaiting weight
+        sendText(chatId, 'Теперь введите ваш вес в килограммах (например, 70):');
+        break;
 
-    case 'awaitNotifyTime':
-      if (validateTimeFormat(input)) {
-        saveUserParam(chatId, 'notifyTime', input);
-        clearSession(chatId);
-        sendText(chatId, `Время уведомлений установлено на *${input}*`, getMenu(chatId));
-      } else {
-        sendText(chatId, 'Неверный формат времени. Введи в формате ЧЧ:ММ');
-      }
-      break;
+      case 'awaiting_weight':
+        if (isNaN(input) || input <= 0) {
+          sendText(chatId, 'Неверный формат. Введите вес числом, например: 70');
+          return;
+        }
+        session.data.weight = Number(input);
+        updateSession(chatId, 'awaiting_height', session.data);
+        sendText(chatId, 'Отлично! Теперь введите ваш рост в сантиметрах (например, 175):');
+        break;
 
-    default:
-      clearSession(chatId);
-      sendText(chatId, 'Произошла небольшая ошибка. Ваше предыдущее действие было сброшено. Пожалуйста, выберите команду из меню еще раз.', getMenu(chatId));
-      break;
+      case 'awaiting_height':
+        if (isNaN(input) || input <= 0) {
+          sendText(chatId, 'Неверный формат. Введите рост числом, например: 175');
+          return;
+        }
+        session.data.height = Number(input);
+        updateSession(chatId, 'awaiting_age', session.data);
+        sendText(chatId, 'Принято. Сколько вам полных лет?');
+        break;
+
+      case 'awaiting_age':
+        if (isNaN(input) || input <= 0) {
+          sendText(chatId, 'Неверный формат. Введите возраст числом, например: 30');
+          return;
+        }
+        session.data.age = Number(input);
+        updateSession(chatId, 'awaiting_sex', session.data);
+        sendSexOptions(chatId);
+        break;
+
+      case 'awaiting_intro_response':
+        // Просто передаем ответ пользователя AI для продолжения диалога
+        const prompt = `Ты — AI-диетолог. Пользователь ответил на твое первое приветствие. Его ответ: "${input}". Продолжи диалог, задай уточняющие вопросы, чтобы собрать информацию для составления меню (пищевые привычки, аллергии, предпочтения). Будь кратким и веди диалог шаг за шагом. В конце, когда соберешь достаточно информации, скажи: "Отлично, я собрал всю информацию! Теперь мы можем перейти к расчету вашего КБЖУ и созданию меню."`;
+        const aiResponse = callGemini(prompt);
+        if (aiResponse) {
+          sendText(chatId, aiResponse);
+          // Если AI решил, что информации достаточно, можно переходить к следующему шагу
+          if (aiResponse.includes("Отлично, я собрал всю информацию")) {
+            clearSession(chatId);
+            // Здесь в будущем будет запуск расчета КБЖУ и генерации меню
+            sendMenu(chatId);
+          } else {
+            // Продолжаем диалог
+            startSession(chatId, 'awaiting_intro_response');
+          }
+        } else {
+          sendText(chatId, "Произошла ошибка AI. Попробуйте позже.", getMenu(chatId));
+          clearSession(chatId);
+        }
+        break;
+
+      case 'awaitNotifyTime':
+        if (validateTimeFormat(input)) {
+          saveUserParam(chatId, 'notifyTime', input);
+          clearSession(chatId);
+          sendText(chatId, `Время уведомлений установлено на *${input}*`, getMenu(chatId));
+        } else {
+          sendText(chatId, 'Неверный формат времени. Введи в формате ЧЧ:ММ');
+        }
+        break;
+
+      default:
+        clearSession(chatId);
+        sendText(chatId, 'Произошла небольшая ошибка. Ваше предыдущее действие было сброшено. Пожалуйста, выберите команду из меню еще раз.', getMenu(chatId));
+        break;
+    }
+  } else {
+    // Если пользователь не в сессии, передаем его сообщение AI
+    const prompt = `Пользователь пишет: "${input}". Ответь ему как AI-диетолог.`;
+    const aiResponse = callGemini(prompt);
+    if (aiResponse) {
+      sendText(chatId, aiResponse);
+    } else {
+      sendText(chatId, "Произошла ошибка AI. Попробуйте позже.", getMenu(chatId));
+    }
   }
 }
 
@@ -212,7 +239,31 @@ function onboardUser(chatId, from) {
       from.is_premium || false,
       new Date(),
       `=HYPERLINK("${userFolder.getUrl()}"; "${userFolder.getId()}")`,
-      `=HYPERLINK("${userSpreadsheet.getUrl()}"; "${userSpreadsheet.getId()}")`
+      `=HYPERLINK("${userSpreadsheet.getUrl()}"; "${userSpreadsheet.getId()}")`,
+      'Стандарт', // Категория по умолчанию
+      false // Администратор по умолчанию
     ]);
   }
+}
+
+// --- Session Management ---
+function getSession(chatId) {
+  const userProps = PropertiesService.getUserProperties();
+  const session = userProps.getProperty(`session_${chatId}`);
+  return session ? JSON.parse(session) : {};
+}
+
+function startSession(chatId, awaitingInput, data = {}) {
+  const session = { awaitingInput, data };
+  const userProps = PropertiesService.getUserProperties();
+  userProps.setProperty(`session_${chatId}`, JSON.stringify(session));
+}
+
+function updateSession(chatId, awaitingInput, data) {
+  startSession(chatId, awaitingInput, data);
+}
+
+function clearSession(chatId) {
+  const userProps = PropertiesService.getUserProperties();
+  userProps.deleteProperty(`session_${chatId}`);
 }
