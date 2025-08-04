@@ -368,12 +368,12 @@
         showLoader('Выполнение операции на сервере...');
         google.script.run
             .withSuccessHandler(result => {
+                hideLoader();
                 if (result.ok) {
-                    showMessage('Операция успешно выполнена! Перезагружаю статус...', 'success');
+                    showMessage('Операция успешно выполнена! Нажмите "Обновить", чтобы увидеть актуальный статус.', 'success');
                 } else {
                     showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
                 }
-                loadBasicInfo(); // Always reload basic info
             })
             .withFailureHandler(err => handleFailure(err, 'Действие с вебхуком'))
             [actionFunction](...args);
