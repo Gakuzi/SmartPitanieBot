@@ -41,30 +41,57 @@ function showWebhookManagerDialog() {
 }
 
 /**
- * Получает базовую информацию о вебхуке.
- * @returns {object} - Объект с базовой информацией.
+ * Получает базовую информацию о вебхуке и проводит первичный анализ.
+ * @returns {object} - Объект с базовой информацией и результатом анализа.
  */
 function getBasicWebhookInfo() {
-  let webhookInfo = {};
   const editorUrl = `https://script.google.com/d/${ScriptApp.getScriptId()}/edit`;
-
   try {
-    webhookInfo = getTelegramWebhookInfo();
+    const webhookInfo = getTelegramWebhookInfo();
     if (!webhookInfo.ok) {
       throw new Error(webhookInfo.description || 'Неизвестная ошибка Telegram API.');
     }
-    return {
-      ok: true,
+
+    const basicInfo = {
       editorUrl: editorUrl,
       rawInfo: webhookInfo.result || {},
     };
+
+    let initialAnalysis;
+    if (basicInfo.rawInfo.url) {
+      initialAnalysis = {
+        status: 'OK',
+        summary: 'Вебхук успешно установлен и работает.',
+        details: `Ваш бот подключен к Telegram через URL: ${basicInfo.rawInfo.url}`,
+        solution: 'Все выглядит хорошо. Если бот перестал отвечать, попробуйте нажать кнопку "Обновить". Если это не поможет, переустановите вебхук, используя форму ниже.'
+      };
+    } else {
+      initialAnalysis = {
+        status: 'CRITICAL',
+        summary: 'Вебхук не установлен',
+        details: 'URL вебхука отсутствует в информации от Telegram. Бот не будет работать.',
+        solution: 'Пожалуйста, разверните проект как веб-приложение, скопируйте URL и вставьте его в поле ниже, затем нажмите "Установить / Обновить".'
+      };
+    }
+
+    return {
+      ok: true,
+      basicInfo: basicInfo,
+      analysis: initialAnalysis
+    };
+
   } catch (e) {
     const errorMessage = `Ошибка при получении базовой информации: ${e.message}`;
     Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА: ${errorMessage}\nStack: ${e.stack || 'N/A'}`);
     return {
       ok: false,
-      editorUrl: editorUrl,
-      error: errorMessage
+      basicInfo: { editorUrl: editorUrl, rawInfo: {} },
+      analysis: {
+        status: 'CRITICAL',
+        summary: 'Ошибка получения данных',
+        details: errorMessage,
+        solution: 'Не удалось связаться с API Telegram. Проверьте ваш токен и подключение к сети.'
+      }
     };
   }
 }

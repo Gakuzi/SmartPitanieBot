@@ -223,7 +223,7 @@
 
         <div class="button-group">
           <button class="btn btn-refresh" id="refreshBtn">Обновить</button>
-          <button class="btn btn-ai" id="aiAnalyzeBtn">Запустить AI-анализ</button>
+          <button class="btn btn-ai ${analysis.status === 'OK' ? 'hidden' : ''}" id="aiAnalyzeBtn">Запустить AI-анализ</button>
           <button class="btn btn-primary" id="setWebhookBtn">Установить / Обновить</button>
           <button class="btn btn-danger" id="deleteWebhookBtn" style="display: ${basicInfo.rawInfo.url ? 'inline-block' : 'none'};">Удалить</button>
           <button class="btn btn-secondary" id="closeDialogBtn">Закрыть</button>
@@ -236,7 +236,10 @@
 
     function bindEventListeners() {
       document.getElementById('refreshBtn').addEventListener('click', loadBasicInfo);
-      document.getElementById('aiAnalyzeBtn').addEventListener('click', runAiAnalysis);
+      const aiBtn = document.getElementById('aiAnalyzeBtn');
+      if (aiBtn) {
+        aiBtn.addEventListener('click', runAiAnalysis);
+      }
       document.getElementById('setWebhookBtn').addEventListener('click', () => {
         const url = document.getElementById('manualWebhookUrl').value.trim();
         if (!url) {
@@ -278,17 +281,14 @@
         google.script.run
             .withSuccessHandler(response => {
                 if (response.ok) {
-                    globalBasicInfo = response; // Save for later use
-                    const initialAnalysis = {
-                        status: 'WARNING',
-                        summary: 'Требуется анализ',
-                        details: 'Базовая информация получена. Для получения рекомендаций запустите AI-анализ.',
-                        solution: 'Нажмите кнопку "Запустить AI-анализ" ниже.'
-                    };
-                    root.innerHTML = renderMainContent({ analysis: initialAnalysis, basicInfo: response });
+                    globalBasicInfo = response.basicInfo; // Save for later use
+                    root.innerHTML = renderMainContent(response);
                     bindEventListeners();
                 } else {
-                    handleFailure(new Error(response.error), 'Получение базовой информации');
+                    // Even on failure, the server should return a valid structure
+                    globalBasicInfo = response.basicInfo || {};
+                    root.innerHTML = renderMainContent(response);
+                    bindEventListeners();
                 }
             })
             .withFailureHandler(err => handleFailure(err, 'Получение базовой информации'))
@@ -306,9 +306,8 @@
         google.script.run
             .withSuccessHandler(response => {
                 if (response.ok) {
-                    // Use the fresh basicInfo from the server response if available
-                    const newBasicInfo = response.basicInfo || analysisData;
-                    root.innerHTML = renderMainContent({ analysis: response.analysis, basicInfo: newBasicInfo });
+                    globalBasicInfo = response.basicInfo; // Update global state
+                    root.innerHTML = renderMainContent(response);
                     bindEventListeners();
                 } else {
                     handleFailure(new Error(response.error), 'AI-анализ');
