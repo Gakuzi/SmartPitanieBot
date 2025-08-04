@@ -84,3 +84,70 @@ function sendTestMessage(messageText) {
     SpreadsheetApp.getUi().alert('Ошибка', `Не удалось отправить тестовое сообщение: ${e.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
+
+/**
+ * Устанавливает вебхук Telegram на указанный URL.
+ * @param {string} url - URL веб-приложения.
+ * @returns {object} - Результат операции.
+ */
+function setTelegramWebhook(url) {
+  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+  if (!telegramToken) {
+    return { ok: false, description: "TELEGRAM_TOKEN не найден в ScriptProperties!" };
+  }
+
+  const apiUrl = `https://api.telegram.org/bot${telegramToken}/setWebhook?url=${encodeURIComponent(url)}`;
+  try {
+    const response = UrlFetchApp.fetch(apiUrl);
+    const result = JSON.parse(response.getContentText());
+    Logger.log(`setWebhook response: ${JSON.stringify(result)}`);
+    return result;
+  } catch (e) {
+    Logger.log(`Ошибка при установке вебхука: ${e.message}`);
+    return { ok: false, description: e.message };
+  }
+}
+
+/**
+ * Удаляет текущий вебхук Telegram.
+ * @returns {object} - Результат операции.
+ */
+function deleteTelegramWebhook() {
+  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+  if (!telegramToken) {
+    return { ok: false, description: "TELEGRAM_TOKEN не найден в ScriptProperties!" };
+  }
+
+  const apiUrl = `https://api.telegram.org/bot${telegramToken}/deleteWebhook`;
+  try {
+    const response = UrlFetchApp.fetch(apiUrl);
+    const result = JSON.parse(response.getContentText());
+    Logger.log(`deleteWebhook response: ${JSON.stringify(result)}`);
+    return result;
+  } catch (e) {
+    Logger.log(`Ошибка при удалении вебхука: ${e.message}`);
+    return { ok: false, description: e.message };
+  }
+}
+
+/**
+ * Получает информацию о текущем вебхуке Telegram.
+ * @returns {object} - Информация о вебхуке.
+ */
+function getTelegramWebhookInfo() {
+  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+  if (!telegramToken) {
+    return { ok: false, description: "TELEGRAM_TOKEN не найден в ScriptProperties!" };
+  }
+
+  const apiUrl = `https://api.telegram.org/bot${telegramToken}/getWebhookInfo`;
+  try {
+    const response = UrlFetchApp.fetch(apiUrl);
+    const result = JSON.parse(response.getContentText());
+    Logger.log(`getWebhookInfo response: ${JSON.stringify(result)}`);
+    return result;
+  } catch (e) {
+    Logger.log(`Ошибка при получении информации о вебхуке: ${e.message}`);
+    return { ok: false, description: e.message };
+  }
+}
