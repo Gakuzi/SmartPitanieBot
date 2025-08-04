@@ -60,19 +60,4 @@ function doPost(e) {
   }
 }
 
-/**
- * Обрабатывает свободный текстовый ввод, передавая его AI.
- * @param {number|string} chatId - ID чата.
- * @param {string} text - Текст сообщения.
- */
-function handleFreeText(chatId, text) {
-  // Здесь будет логика для вызова Gemini (Этап 3)
-  // Пока просто имитируем ответ
-  const prompt = `Ты — AI-диетолог. Пользователь написал тебе: "${text}". Ответь ему в своей роли.`;
-  const aiResponse = callGemini(prompt); // Предполагается, что callGemini существует
-  if (aiResponse) {
-    sendText(chatId, aiResponse);
-  } else {
-    sendText(chatId, "Произошла ошибка при обращении к AI. Попробуйте позже.");
-  }
-}
+
