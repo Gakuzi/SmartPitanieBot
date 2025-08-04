@@ -268,6 +268,10 @@
     let autoUrl = '';
     let editorUrl = '';
 
+    function logToServer(message) {
+        google.script.run.logFromClient(message);
+    }
+
     function showLoader(statusText) {
         loaderStatus.textContent = statusText;
         loader.classList.remove('hidden');
@@ -325,6 +329,7 @@
     }
 
     function handleTimeout() {
+        logToServer('Client-side timeout reached.');
         hideLoader();
         const timeoutAnalysis = {
             status: 'CRITICAL',
@@ -337,6 +342,7 @@
 
     function runServerFunctionWithTimeout(functionName, ...args) {
         return new Promise((resolve, reject) => {
+            logToServer(`Calling server function: ${functionName}`);
             const serverCall = new Promise((res, rej) => {
                 google.script.run
                     .withSuccessHandler(res)
@@ -349,8 +355,14 @@
             });
 
             Promise.race([serverCall, timeout])
-                .then(resolve)
-                .catch(reject);
+                .then(response => {
+                    logToServer(`Server function ${functionName} responded.`);
+                    resolve(response);
+                })
+                .catch(error => {
+                    logToServer(`Server function ${functionName} failed or timed out. Error: ${error.message}`);
+                    reject(error);
+                });
         });
     }
 
@@ -417,7 +429,10 @@
     refreshBtn.addEventListener('click', loadWebhookInfo);
     closeDialogBtn.addEventListener('click', () => google.script.host.close());
 
-    document.addEventListener('DOMContentLoaded', loadWebhookInfo);
+    document.addEventListener('DOMContentLoaded', () => {
+        logToServer('Dialog opened.');
+        loadWebhookInfo();
+    });
   </script>
 </body>
 </html>

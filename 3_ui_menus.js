@@ -23,6 +23,14 @@ function createCustomMenu() {
 // --- Диалоговые окна в Google Sheets ---
 
 /**
+ * Логирует сообщение от клиента для диагностики.
+ * @param {string} message - Сообщение от клиента.
+ */
+function logFromClient(message) {
+    Logger.log(`[CLIENT LOG] ${message}`);
+}
+
+/**
  * Показывает диалоговое окно для управления вебхуком.
  */
 function showWebhookManagerDialog() {
@@ -161,8 +169,7 @@ function setGeminiApiKey() {
       PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', apiKey);
       ui.alert('Ключ Gemini API успешно сохранен.');
       Logger.log('✅ Ключ Gemini API сохранен.');
-    }
-    else {
+    } else {
       ui.alert('Ключ API не может быть пустым.');
       Logger.log('⚠️ Попытка сохранить пустой ключ Gemini API.');
     }
