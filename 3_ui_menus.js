@@ -46,7 +46,7 @@ function runAdminAction(actionName) {
 }
 
 /**
- * Переключает режим работы (AI/Ручной)
+ * Переключает режим работы (AI/Ручной) с проверкой и созданием чекбокса.
  */
 function toggleMode() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -59,7 +59,17 @@ function toggleMode() {
   }
 
   const modeCell = settingsSheet.getRange('B3');
-  const isAiMode = modeCell.isChecked();
+  
+  // Проверяем, есть ли уже чекбокс
+  const dataValidation = modeCell.getDataValidation();
+  const isCheckbox = dataValidation && dataValidation.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.CHECKBOX;
+
+  if (!isCheckbox) {
+    // Если чекбокса нет, создаем его
+    modeCell.insertCheckboxes();
+  }
+
+  const isAiMode = modeCell.isChecked() === true; // isChecked() может вернуть null
 
   // Переключаем режим
   modeCell.setChecked(!isAiMode);
