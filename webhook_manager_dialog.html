@@ -76,6 +76,16 @@
         border-radius: 5px;
         font-family: monospace;
     }
+    .dev-links a {
+        display: inline-block;
+        margin-right: 15px;
+        text-decoration: none;
+        color: #007bff;
+        font-weight: 500;
+    }
+    .dev-links a:hover {
+        text-decoration: underline;
+    }
 
     .url-section {
         background-color: #fff;
@@ -203,6 +213,13 @@
                 <h3>Сырые данные от Telegram</h3>
                 <pre id="rawTelegramData"></pre>
             </div>
+            <div id="dev-links-section" class="info-section hidden">
+                <h3>Инструменты разработчика</h3>
+                <div class="dev-links">
+                    <a id="gas-editor-link" href="#" target="_blank">Открыть в Apps Script</a>
+                    <a id="vscode-link" href="#">Открыть в VS Code</a>
+                </div>
+            </div>
         </div>
 
         <div class="url-section">
@@ -235,8 +252,12 @@
     const statusIcon = document.getElementById('statusIcon');
     const statusSummary = document.getElementById('statusSummary');
     const statusDetails = document.getElementById('statusDetails');
+    const statusSolution = document.getElementById('statusSolution');
     const rawDataSection = document.getElementById('raw-data-section');
     const rawTelegramData = document.getElementById('rawTelegramData');
+    const devLinksSection = document.getElementById('dev-links-section');
+    const gasEditorLink = document.getElementById('gas-editor-link');
+    const vscodeLink = document.getElementById('vscode-link');
     const autoWebAppUrlElem = document.getElementById('autoWebAppUrl');
     const manualWebhookUrlInput = document.getElementById('manualWebhookUrl');
     const setWebhookBtn = document.getElementById('setWebhookBtn');
@@ -246,6 +267,7 @@
     const dialogMessage = document.getElementById('dialogMessage');
 
     let autoUrl = '';
+    let editorUrl = '';
 
     function showLoader(statusText) {
         loaderStatus.textContent = statusText;
@@ -267,6 +289,7 @@
     function updateStatusPanel(analysis) {
         statusPanel.className = 'status-panel'; // Reset classes
         rawDataSection.classList.add('hidden'); // Hide raw data by default
+        devLinksSection.classList.add('hidden'); // Hide dev links by default
 
         if (!analysis) {
             analysis = { status: 'CRITICAL', summary: 'Ошибка анализа', details: 'Не удалось получить анализ от AI.', solution: 'Проверьте логи и повторите попытку.' };
@@ -328,11 +351,12 @@
         showMessage('', 'hidden');
         try {
             const response = await runServerFunction('getWebhookStatusForDialog');
+            editorUrl = response.editorUrl;
             if (response.ok) {
                 autoUrl = response.webAppUrl;
                 autoWebAppUrlElem.textContent = autoUrl;
                 updateStatusPanel(response.analysis);
-                deleteWebhookBtn.style.display = response.rawInfo.url ? 'inline-block' : 'none';
+                deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
             } else {
                 updateStatusPanel(response.analysis);
             }
@@ -343,10 +367,13 @@
                 const errorAnalysis = {
                     status: 'CRITICAL',
                     summary: 'Критическая ошибка клиента',
-                    details: `Не удалось выполнить запрос к серверу: ${error.message}`,
-                    solution: 'Закройте и снова откройте диалоговое окно. Проверьте консоль браузера на наличие ошибок.'
+                    details: `Произошла непредвиденная ошибка на стороне клиента: ${error.message}`,
+                    solution: 'Эта ошибка для разработчика. Пожалуйста, используйте инструменты ниже для отладки.'
                 };
                 updateStatusPanel(errorAnalysis);
+                devLinksSection.classList.remove('hidden');
+                gasEditorLink.href = editorUrl;
+                vscodeLink.href = `vscode://file/${editorUrl}`;
             }
         }
         hideLoader();

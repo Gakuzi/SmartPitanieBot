@@ -39,6 +39,7 @@ function showWebhookManagerDialog() {
 function getWebhookStatusForDialog() {
   let webAppUrl = '';
   let webhookInfo = {};
+  const editorUrl = `https://script.google.com/d/${ScriptApp.getScriptId()}/edit`;
 
   // --- Этап 1: Запрос к Telegram --- 
   try {
@@ -54,6 +55,7 @@ function getWebhookStatusForDialog() {
     return {
       ok: false,
       webAppUrl: webAppUrl, 
+      editorUrl: editorUrl,
       rawInfo: webhookInfo.result || {},
       analysis: {
         status: "CRITICAL",
@@ -75,6 +77,7 @@ function getWebhookStatusForDialog() {
     return {
       ok: true,
       webAppUrl: webAppUrl,
+      editorUrl: editorUrl,
       rawInfo: webhookInfo.result,
       analysis: analysis
     };
@@ -84,6 +87,7 @@ function getWebhookStatusForDialog() {
     return {
       ok: true, // ok:true, потому что основная информация от Telegram получена
       webAppUrl: webAppUrl,
+      editorUrl: editorUrl,
       rawInfo: webhookInfo.result,
       analysis: {
         status: "WARNING",
