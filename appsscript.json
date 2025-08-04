@@ -1,6 +1,14 @@
 {
   "timeZone": "Europe/Moscow",
-  "dependencies": {},
+  "dependencies": {
+    "libraries": [
+      {
+        "userSymbol": "TelegramApiLib",
+        "libraryId": "1y847eOyoPdYBIJ1ni4g7pJxwriX2a_f-4F1BTjImidTEEJ5iNWvZAO_7",
+        "version": "0"
+      }
+    ]
+  },
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
   "webapp": {
@@ -14,20 +22,5 @@
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/script.container.ui",
     "https://www.googleapis.com/auth/script.external_request"
-  ],
-  "fileOrder": [
-    "config.js",
-    "7_utils.js",
-    "2_telegram_api.js",
-    "6_sheets_api.js",
-    "8_gemini_api.js",
-    "4_user_data.js",
-    "5_nutrition_ai.js",
-    "9_manual_mode.js",
-    "3_ui_menus.js",
-    "1_main.js",
-    "doPost.js",
-    "0_onOpen.js",
-    "0_setup.js"
   ]
 }

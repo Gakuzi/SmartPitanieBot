@@ -214,41 +214,33 @@ function generateMenu(chatId) {
  * @param {number|string} chatId - ID чата.
  * @param {string} text - Текст сообщения.
  */
-function handleFreeText(chatId, text) {  sendChatAction(chatId); // Отправляем "печатает..."
+function handleFreeText(chatId, text) {
+  sendChatAction(chatId); // Отправляем "печатает..."
 
   const userData = getUserData(chatId);
+  // Промпт обернут в обратные кавычки для корректной обработки многострочности и спецсимволов.
   const prompt = `Ты — AI-диетолог в Telegram-боте. Твой текущий пользователь: ${JSON.stringify(userData)}. Он написал тебе: "${text}".
 
 **ИНСТРУКЦИИ ПО ФОРМАТИРОВАНИЮ:**
 1.  **Обязательно используй MarkdownV2 разметку Telegram.**
-2.  Для форматирования используй следующие стили:
-    *   *Курсив* для выделения и акцентов: `*текст*`
-    *   **Жирный** для ключевых моментов и заголовков: `**текст**`
-    *   `Моноширинный текст` для рецептов, списков продуктов или данных, которые пользователь может скопировать: ```текст```
-    *   > Цитата для важных советов или напоминаний: `> текст`
-    *   Ссылки должны быть встроены в текст: `[текст ссылки](URL)`
-3.  **Экранируй специальные символы!** В MarkdownV2 символы `_`, `*`, `[`, `]`, `(`, `)`, `~`, ```, `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!` должны быть экранированы символом `\` (например, `1\.5` вместо `1.5`).
-
-**ИНСТРУКЦИИ ПО ОТВЕТУ:**
-1.  Ответь пользователю в своей роли, учитывая его данные. Будь кратким и полезным.
-2.  После ответа предложи релевантные действия с помощью кнопок.
-3.  Твой ответ **ДОЛЖЕН** быть в формате JSON. Не пиши ничего, кроме JSON.
+2.  Твой ответ **ДОЛЖЕН** быть в формате JSON. Не пиши ничего, кроме JSON.
 
 **ФОРМАТ JSON:**
 ```json
 {
   "response": "Твой отформатированный в MarkdownV2 и экранированный ответ.",
   "buttons": [
-    {"text": "Текст кнопки 1", "callback_data": "action1:value1"},
-    {"text": "Текст кнопки 2", "callback_data": "action2:value2"}
+    {"text": "Текст кнопки 1", "callback_data": "action1:value1"}
   ]
 }
 ```
 `;
+
   const aiResponse = callGemini(prompt, true); // Запрашиваем JSON
 
   if (aiResponse && aiResponse.response) {
     const keyboard = aiResponse.buttons ? { inline_keyboard: [aiResponse.buttons] } : getMenu(chatId);
+    // Ответ от AI уже должен быть отформатирован и экранирован, поэтому передаем его напрямую
     sendText(chatId, aiResponse.response, keyboard);
   } else if (aiResponse && aiResponse.error) {
     Logger.log(`Ошибка AI при свободном общении для ${chatId}: ${aiResponse.details}`);

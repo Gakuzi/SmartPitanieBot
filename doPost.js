@@ -1,68 +1,22 @@
 /**
  * @file doPost.js
- * @description Единая точка входа и интеллектуальный маршрутизатор для всех запросов от Telegram.
+ * @description Единая точка входа. В режиме отладки передает управление в DEBUG_router.js.
  */
 
-/**
- * Главная функция, обрабатывающая все входящие POST-запросы от Telegram.
- * @param {object} e - Объект события от Google Apps Script.
- */
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
-      Logger.log("Получен пустой или некорректный запрос от Telegram.");
+      Logger.log('Получен пустой или некорректный запрос от Telegram.');
       return;
     }
-
     const data = JSON.parse(e.postData.contents);
-    Logger.log(`Входящие данные: ${JSON.stringify(data)}`);
-
-    // Определяем chatId заранее
-    const chatId = data.message ? data.message.chat.id : (data.callback_query ? data.callback_query.from.id : null);
-    if (chatId) {
-      sendChatAction(chatId, 'typing');
-    }
-
-    if (data.callback_query) {
-      // Обработка нажатий на встроенные кнопки
-      handleCallbackQuery(data.callback_query);
-      return;
-    }
-
-    if (!data.message || !data.message.text) {
-      Logger.log(`Пропускаем нетекстовое сообщение или другой тип обновления.`);
-      return;
-    }
-
-    const text = data.message.text.trim();
-    const session = getSession(chatId);
-
-    // 1. Проверка на системную команду
-    if (isCommand(text)) {
-      handleCommand(chatId, text, text, data.message);
-      return;
-    }
-
-    // 2. Проверка, ожидает ли система ввода от пользователя в рамках сценария
-    if (session.awaitingInput) {
-      handleUserInput(chatId, text, session);
-      return;
-    }
-
-    // 3. Если это не команда и не ответ в сценарии, передаем в AI (если включен)
-    if (isAiMode()) {
-      handleFreeText(chatId, text);
-    } else {
-      sendText(chatId, "🤖 AI-ассистент в данный момент отключен. Пожалуйста, воспользуйтесь командами из меню.", getMenu(chatId));
-    }
+    
+    // --- РЕЖИМ ОТЛАДКИ ---
+    // Просто передаем все данные в отладочный маршрутизатор
+    debugRouter(data);
+    // --- КОНЕЦ РЕЖИЛА ОТЛАДКИ ---
 
   } catch (err) {
-    Logger.log(`КРИТИЧЕСКАЯ ОШИБКА в doPost: ${err.message}\nСтек: ${err.stack}`);
-    const adminChatId = PropertiesService.getScriptProperties().getProperty('ADMIN_CHAT_ID');
-    if (adminChatId) {
-      sendText(adminChatId, `Критическая ошибка в боте: ${err.message}`);
-    }
+    Logger.log(`КРИТИЧЕСКАЯ ОШИБКА в doPost (оболочка отладки): ${err.message}\nСтек: ${err.stack}`);
   }
 }
-
-

@@ -21,8 +21,8 @@ function sendText(chatId, text, keyboard = null) {
   const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
   const payload = {
     chat_id: String(chatId),
-    text: escapeMarkdownV2(text), // Принудительное экранирование
-    parse_mode: 'MarkdownV2', // Принудительное использование MarkdownV2
+    text: escapeMarkdownV2(text), // Используем надежное экранирование
+    parse_mode: 'MarkdownV2',
     disable_web_page_preview: true,
   };
 
