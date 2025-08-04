@@ -24,7 +24,7 @@
       margin-bottom: 25px;
       font-weight: 500;
     }
-    .status-section {
+    .status-section, .url-section {
       background-color: #e9ecef;
       border-left: 4px solid #007bff;
       padding: 15px;
@@ -33,8 +33,10 @@
       font-size: 0.9em;
       line-height: 1.6;
     }
-    .status-section strong {
+    .status-section strong, .url-section strong {
       color: #0056b3;
+      display: block;
+      margin-bottom: 10px;
     }
     .status-section pre {
       white-space: pre-wrap;
@@ -44,6 +46,20 @@
       border-radius: 4px;
       margin-top: 10px;
       font-size: 0.85em;
+    }
+    .url-section code {
+        background-color: #f1f3f5;
+        padding: 2px 5px;
+        border-radius: 3px;
+        word-break: break-all;
+    }
+    .url-section input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        box-sizing: border-box;
     }
     .button-group {
       display: flex;
@@ -126,13 +142,20 @@
 
     <div class="status-section">
       <strong>Текущий статус вебхука:</strong>
-      <pre id="webhookStatus"></pre>
-      <div id="currentWebAppUrl"></div>
+      <pre id="webhookStatus">Загрузка...</pre>
+    </div>
+
+    <div class="url-section">
+        <strong>URL Веб-приложения</strong>
+        <p>Автоматически определенный URL:</p>
+        <code id="autoWebAppUrl">Загрузка...</code>
+        <p style="margin-top: 15px;">Если URL выше неверен, введите правильный URL развертывания вручную:</p>
+        <input type="text" id="manualWebhookUrl" placeholder="https://script.google.com/macros/s/ваше_id/exec">
     </div>
 
     <div class="button-group" id="actionButtons">
-      <button class="btn btn-primary" id="setWebhookBtn">Установить / Обновить вебхук</button>
-      <button class="btn btn-danger hidden" id="deleteWebhookBtn">Удалить вебхук</button>
+      <button class="btn btn-primary" id="setWebhookBtn">Установить / Обновить</button>
+      <button class="btn btn-danger hidden" id="deleteWebhookBtn">Удалить</button>
       <button class="btn btn-secondary" id="closeDialogBtn">Закрыть</button>
     </div>
 
@@ -145,13 +168,16 @@
 
   <script>
     const webhookStatusElem = document.getElementById('webhookStatus');
-    const currentWebAppUrlElem = document.getElementById('currentWebAppUrl');
+    const autoWebAppUrlElem = document.getElementById('autoWebAppUrl');
+    const manualWebhookUrlInput = document.getElementById('manualWebhookUrl');
     const setWebhookBtn = document.getElementById('setWebhookBtn');
     const deleteWebhookBtn = document.getElementById('deleteWebhookBtn');
     const closeDialogBtn = document.getElementById('closeDialogBtn');
     const progressBarContainer = document.getElementById('progressBarContainer');
     const progressBar = document.getElementById('progressBar');
     const dialogMessage = document.getElementById('dialogMessage');
+
+    let autoUrl = '';
 
     function showMessage(msg, type) {
       dialogMessage.textContent = msg;
@@ -188,32 +214,40 @@
             statusText += `URL: ${info.result.url}\n`;
             statusText += `Последняя ошибка: ${info.result.last_error_message || 'Нет'}\n`;
             statusText += `Ожидающие обновления: ${info.result.pending_update_count}\n`;
-            statusText += `Сертификат: ${info.result.has_custom_certificate ? 'Есть' : 'Нет'}\n`;
-            statusText += `Макс. соединения: ${info.result.max_connections || 'Не указано'}\n`;
-            statusText += `Разрешенные обновления: ${info.result.allowed_updates ? info.result.allowed_updates.join(', ') : 'Все'}\n`;
             deleteWebhookBtn.classList.remove('hidden');
-            setWebhookBtn.textContent = 'Обновить вебхук';
+            setWebhookBtn.textContent = 'Обновить';
           } else {
             statusText += `Вебхук не установлен.\n`;
             deleteWebhookBtn.classList.add('hidden');
-            setWebhookBtn.textContent = 'Установить вебхук';
+            setWebhookBtn.textContent = 'Установить';
           }
           webhookStatusElem.textContent = statusText;
-          currentWebAppUrlElem.textContent = `URL текущего веб-приложения: ${info.webAppUrl}`;
+          
+          autoUrl = info.webAppUrl;
+          autoWebAppUrlElem.textContent = autoUrl;
+
           updateProgressBar(100);
           hideProgressBar();
         })
         .withFailureHandler(function(error) {
           hideProgressBar();
-          showMessage(`Ошибка загрузки статуса вебхука: ${error.message}`, 'error');
+          showMessage(`Ошибка загрузки статуса: ${error.message}`, 'error');
           webhookStatusElem.textContent = 'Не удалось загрузить статус.';
+          autoWebAppUrlElem.textContent = 'Ошибка загрузки.';
           deleteWebhookBtn.classList.add('hidden');
-          setWebhookBtn.textContent = 'Установить вебхук';
         })
         .getWebhookStatusForDialog();
     }
 
     setWebhookBtn.addEventListener('click', function() {
+      const manualUrl = manualWebhookUrlInput.value.trim();
+      const finalUrl = manualUrl || autoUrl;
+
+      if (!finalUrl) {
+          showMessage('URL для установки вебхука не найден. Введите его вручную.', 'error');
+          return;
+      }
+
       showProgressBar();
       hideMessage();
       updateProgressBar(20);
@@ -223,15 +257,15 @@
           if (result.ok) {
             showMessage('Вебхук успешно установлен/обновлен.', 'success');
           } else {
-            showMessage(`Ошибка установки/обновления вебхука: ${result.description || 'Неизвестная ошибка'}`, 'error');
+            showMessage(`Ошибка: ${result.description || 'Неизвестная ошибка'}`, 'error');
           }
-          loadWebhookInfo(); // Reload status after action
+          loadWebhookInfo(); // Reload status
         })
         .withFailureHandler(function(error) {
           hideProgressBar();
           showMessage(`Произошла ошибка: ${error.message}`, 'error');
         })
-        .setWebhookFromDialog(); // Call server-side function
+        .setWebhookFromDialog(finalUrl); // Pass the chosen URL
     });
 
     deleteWebhookBtn.addEventListener('click', function() {
@@ -244,22 +278,21 @@
           if (result.ok) {
             showMessage('Вебхук успешно удален.', 'success');
           } else {
-            showMessage(`Ошибка удаления вебхука: ${result.description || 'Неизвестная ошибка'}`, 'error');
+            showMessage(`Ошибка удаления: ${result.description || 'Неизвестная ошибка'}`, 'error');
           }
-          loadWebhookInfo(); // Reload status after action
+          loadWebhookInfo(); // Reload status
         })
         .withFailureHandler(function(error) {
           hideProgressBar();
           showMessage(`Произошла ошибка: ${error.message}`, 'error');
         })
-        .deleteWebhookFromDialog(); // Call server-side function
+        .deleteWebhookFromDialog();
     });
 
     closeDialogBtn.addEventListener('click', function() {
       google.script.host.close();
     });
 
-    // Load info when dialog opens
     document.addEventListener('DOMContentLoaded', loadWebhookInfo);
   </script>
 </body>

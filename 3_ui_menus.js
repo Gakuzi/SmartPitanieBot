@@ -1,75 +1,107 @@
-// --- Клавиатуры ---
-function getMenu(chatId) {
-  const userData = getUserData(chatId);
-  const notifyTime = userData.notifyTime || 'не задано';
+/**
+ * @file 3_ui_menus.js
+ * @description Управление UI, меню и диалогами в Google Sheets и Telegram.
+ */
 
-  return {
-    keyboard: [
-      [{ text: "🍽 Показать меню" }, { text: "🛒 Список покупок" }],
-      [{ text: "👨‍🍳 Что готовим?" }, { text: "🔄 Замена продукта" }],
-      [{ text: "⚙️ Настройки" }],
-      [{ text: `⏰ Текущее время уведомлений: ${notifyTime}` }]
-    ],
-    resize_keyboard: true,
-    one_time_keyboard: false
-  };
+// --- Меню в Google Sheets ---
+
+/**
+ * Создает кастомное меню в интерфейсе Google Sheets.
+ */
+function createCustomMenu() {
+  SpreadsheetApp.getUi()
+    .createMenu('🤖 SmartPit Бот')
+    .addItem('🚀 Управление вебхуком', 'showWebhookManagerDialog')
+    .addSeparator()
+    .addItem('🔑 Установить токен Telegram', 'setTelegramToken')
+    .addItem('🔑 Установить ключ Gemini', 'setGeminiApiKey')
+    .addSeparator()
+    .addItem('⚙️ Настроить инфраструктуру', 'setupProjectInfrastructure')
+    .addToUi();
 }
 
-function sendSettingsMenu(chatId) {
-  const keyboard = {
-    keyboard: [
-      [{ text: "🥅 Установить цель" }, { text: "⚖️ Ввести параметры" }],
-      [{ text: "🕒 Установить время уведомлений" }],
-      [{ text: "⬅️ Назад" }]
-    ],
-    resize_keyboard: true,
-    one_time_keyboard: false
-  };
-  sendText(chatId, "Выберите настройку:", keyboard);
+// --- Диалоговые окна в Google Sheets ---
+
+/**
+ * Показывает диалоговое окно для управления вебхуком.
+ */
+function showWebhookManagerDialog() {
+  const html = HtmlService.createHtmlOutputFromFile('webhook_manager_dialog')
+    .setWidth(700)
+    .setHeight(550);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Управление вебхуком Telegram');
 }
 
-function sendGoalOptions(chatId) {
-  const keyboard = {
-    inline_keyboard: [
-      [
-        { text: "Похудение", callback_data: "setGoal:похудение" },
-        { text: "Набор веса", callback_data: "setGoal:набор" },
-        { text: "Удержание", callback_data: "setGoal:удержание" }
-      ]
-    ]
-  };
-  sendText(chatId, "Выберите вашу цель:", keyboard);
+/**
+ * Получает статус вебхука и URL веб-приложения для диалогового окна.
+ * @returns {object} - Объект с информацией о статусе и URL.
+ */
+function getWebhookStatusForDialog() {
+  const webAppUrl = ScriptApp.getService().getUrl();
+  const webhookInfo = getTelegramWebhookInfo();
+  return { ...webhookInfo, webAppUrl };
 }
 
-function sendSexOptions(chatId) {
-  const keyboard = {
-    inline_keyboard: [
-      [
-        { text: "Мужской", callback_data: "set_sex:m" },
-        { text: "Женский", callback_data: "set_sex:f" }
-      ]
-    ]
-  };
-  sendText(chatId, "Укажите ваш пол:", keyboard);
+/**
+ * Устанавливает вебхук из диалогового окна.
+ * @param {string} url - URL для установки вебхука.
+ * @returns {object} - Результат операции.
+ */
+function setWebhookFromDialog(url) {
+  if (!url) {
+    return { ok: false, description: "URL не был предоставлен." };
+  }
+  return setTelegramWebhook(url);
 }
 
-function sendActivityOptions(chatId) {
-  const keyboard = {
-    inline_keyboard: [
-      [
-        { text: "Низкий", callback_data: "set_activity:низкий" },
-        { text: "Средний", callback_data: "set_activity:средний" },
-        { text: "Высокий", callback_data: "set_activity:высокий" }
-      ]
-    ]
-  };
-  sendText(chatId, "Выберите ваш уровень физической активности:", keyboard);
+/**
+ * Удаляет вебхук из диалогового окна.
+ * @returns {object} - Результат операции.
+ */
+function deleteWebhookFromDialog() {
+  return deleteTelegramWebhook();
 }
 
-function sendMenu(chatId) {
-  sendText(chatId, "Выберите действие:", getMenu(chatId));
+/**
+ * Запрашивает и сохраняет токен Telegram.
+ */
+function setTelegramToken() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt(
+    'Настройка токена Telegram',
+    'Пожалуйста, введите ваш токен Telegram API:',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() == ui.Button.OK) {
+    const token = response.getResponseText().trim();
+    if (token) {
+      PropertiesService.getScriptProperties().setProperty('TELEGRAM_TOKEN', token);
+      ui.alert('Токен Telegram успешно сохранен.');
+    } else {
+      ui.alert('Токен не может быть пустым.');
+    }
+  }
 }
 
-function sendStart(chatId) {
-  sendText(chatId, "Добро пожаловать! Я ваш помощник по питанию. Выберите действие из меню:", getMenu(chatId));
+/**
+ * Запрашивает и сохраняет ключ Gemini API.
+ */
+function setGeminiApiKey() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt(
+    'Настройка Gemini API',
+    'Пожалуйста, введите ваш ключ Google Gemini API:',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() == ui.Button.OK) {
+    const apiKey = response.getResponseText().trim();
+    if (apiKey) {
+      PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', apiKey);
+      ui.alert('Ключ Gemini API успешно сохранен.');
+    } else {
+      ui.alert('Ключ API не может быть пустым.');
+    }
+  }
 }
