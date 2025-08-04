@@ -84,15 +84,30 @@ function showWebhookManagerDialog() {
 function getBasicWebhookInfo() {
   const editorUrl = `https://script.google.com/d/${ScriptApp.getScriptId()}/edit`;
   try {
+    Logger.log('DEBUG: Вызов getTelegramWebhookInfo()');
+    Logger.log('DEBUG: Вызов getTelegramWebhookInfo()');
     const webhookInfo = getTelegramWebhookInfo();
+    Logger.log(`DEBUG: Результат getTelegramWebhookInfo(): ${JSON.stringify(webhookInfo)}`);
+
     if (!webhookInfo.ok) {
-      throw new Error(webhookInfo.description || 'Неизвестная ошибка Telegram API.');
+      // Если getTelegramWebhookInfo вернула ошибку, обрабатываем ее здесь
+      return {
+        ok: false,
+        basicInfo: { editorUrl: editorUrl, rawInfo: {} },
+        analysis: {
+          status: 'CRITICAL',
+          summary: 'Ошибка получения данных о вебхуке',
+          details: webhookInfo.description || 'Неизвестная ошибка Telegram API.',
+          solution: 'Пожалуйста, проверьте ваш токен Telegram и разрешения скрипта.'
+        }
+      };
     }
 
     const basicInfo = {
       editorUrl: editorUrl,
       rawInfo: webhookInfo.result || {},
     };
+    Logger.log(`DEBUG: basicInfo.rawInfo: ${JSON.stringify(basicInfo.rawInfo)}`);
 
     let initialAnalysis;
     if (basicInfo.rawInfo.url) {
@@ -110,6 +125,7 @@ function getBasicWebhookInfo() {
         solution: 'Пожалуйста, разверните проект как веб-приложение, скопируйте URL и вставьте его в поле ниже, затем нажмите "Установить / Обновить".'
       };
     }
+    Logger.log(`DEBUG: initialAnalysis: ${JSON.stringify(initialAnalysis)}`);
 
     return {
       ok: true,

@@ -186,7 +186,8 @@ function getTelegramWebhookInfo() {
   try {
     const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
     if (!telegramToken) {
-      throw new Error("TELEGRAM_TOKEN не найден в ScriptProperties!");
+      Logger.log("❌ ОШИБКА: TELEGRAM_TOKEN не найден в ScriptProperties при получении информации о вебхуке.");
+      return { ok: false, description: "TELEGRAM_TOKEN не найден в ScriptProperties. Пожалуйста, установите его в настройках скрипта." };
     }
 
     const apiUrl = `https://api.telegram.org/bot${telegramToken}/getWebhookInfo`;
@@ -195,7 +196,16 @@ function getTelegramWebhookInfo() {
     Logger.log(`ℹ️ Информация о вебхуке: ${JSON.stringify(result)}`);
     return result;
   } catch (e) {
-    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при получении информации о вебхуке: ${e.message}\nStack: ${e.stack || 'N/A'}`);
-    return { ok: false, description: e.message };
+    const errorMessage = `Ошибка при получении информации о вебхуке: ${e.message}`;
+    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА: ${errorMessage}\nStack: ${e.stack || 'N/A'}`);
+    
+    // Проверяем, является ли ошибка проблемой с разрешениями UrlFetchApp
+    if (e.message.includes("UrlFetchApp.fetch") && e.message.includes("Required permissions")) {
+      return { 
+        ok: false, 
+        description: `Недостаточно разрешений для выполнения внешних запросов. Пожалуйста, авторизуйте скрипт для 'https://www.googleapis.com/auth/script.external_request'.` 
+      };
+    }
+    return { ok: false, description: errorMessage };
   }
 }
