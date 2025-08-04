@@ -37,9 +37,35 @@ function runAdminAction(actionName) {
     case 'setGeminiApiKey':
       setGeminiApiKey();
       break;
+    case 'toggleMode':
+      toggleMode();
+      break;
     default:
       SpreadsheetApp.getUi().alert('Неизвестное действие: ' + actionName);
   }
+}
+
+/**
+ * Переключает режим работы (AI/Ручной)
+ */
+function toggleMode() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const settingsSheet = ss.getSheetByName('Настройки');
+  const ui = SpreadsheetApp.getUi();
+
+  if (!settingsSheet) {
+    ui.alert('Лист "Настройки" не найден. Пожалуйста, сначала настройте таблицу администратора.');
+    return;
+  }
+
+  const modeCell = settingsSheet.getRange('B3');
+  const isAiMode = modeCell.isChecked();
+
+  // Переключаем режим
+  modeCell.setChecked(!isAiMode);
+
+  const newMode = !isAiMode ? 'AI' : 'Ручной';
+  ui.alert(`Режим работы переключен на: ${newMode}`);
 }
 
 // --- Диалоговые окна в Google Sheets ---

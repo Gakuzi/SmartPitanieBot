@@ -35,7 +35,7 @@ function handleCallbackQuery(callbackQuery) {
   if (action === 'setGoal') {
     const userData = saveUserParam(chatId, 'goal', value);
     editMessageText(chatId, messageId, `Цель сохранена: *${value}*`);
-    if (userData.weight && userData.goal) {
+    if (isAiMode() && userData.weight && userData.goal) {
         triggerNutritionCalculation(chatId, userData);
     }
     sendMenu(chatId);
@@ -63,7 +63,7 @@ function handleCallbackQuery(callbackQuery) {
     clearSession(chatId);
     sendText(chatId, 'Параметры сохранены.');
 
-    if (userData.weight && userData.goal) {
+    if (isAiMode() && userData.weight && userData.goal) {
         triggerNutritionCalculation(chatId, userData);
     }
     sendMenu(chatId);
@@ -95,7 +95,24 @@ function handleCommand(chatId, msg, msgRaw, messageData) {
       startSession(chatId, 'awaitNotifyTime');
       return sendText(chatId, 'Введите время уведомлений в формате ЧЧ:ММ (например, 07:30)');
     case '🍽 показать меню':
-      return sendTodayMenu(chatId);
+      if (isAiMode()) {
+        const userData = getUserData(chatId);
+        if (userData.weight && userData.goal) {
+          triggerNutritionCalculation(chatId, userData);
+        } else {
+          sendText(chatId, "Пожалуйста, сначала введите свои параметры и установите цель в настройках.");
+        }
+      } else {
+        const userData = getUserData(chatId);
+        try {
+          const bmrData = calculateBMR(userData);
+          const menu = generateMenu(bmrData);
+          sendText(chatId, menu);
+        } catch (e) {
+          sendText(chatId, `Ошибка: ${e.message}`);
+        }
+      }
+      return;
     case '🛒 список покупок':
       return sendShoppingList(chatId);
     case '👨‍🍳 что готовим?':

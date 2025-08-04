@@ -74,3 +74,32 @@ function addUser(chatId) {
     scriptProps.setProperty('all_users', JSON.stringify(users));
   }
 }
+
+// --- Управление режимом работы ---
+
+/**
+ * Получает текущий режим работы из таблицы настроек.
+ * @returns {string} 'AI' или 'Ручной'.
+ */
+function getMode() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const settingsSheet = ss.getSheetByName('Настройки');
+    if (!settingsSheet) return 'AI'; // По умолчанию AI
+
+    const modeCell = settingsSheet.getRange('B3');
+    return modeCell.isChecked() ? 'AI' : 'Ручной';
+  } catch (e) {
+    Logger.log(`Ошибка при получении режима работы: ${e.message}. Возвращаем режим AI по умолчанию.`);
+    return 'AI';
+  }
+}
+
+/**
+ * Проверяет, включен ли режим AI.
+ * @returns {boolean} True, если режим AI активен.
+ */
+function isAiMode() {
+  return getMode() === 'AI';
+}
+

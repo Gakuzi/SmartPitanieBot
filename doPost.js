@@ -14,6 +14,12 @@ function doPost(e) {
       return;
     }
 
+    // Проверяем режим работы. Если ручной, то ничего не делаем.
+    if (!isAiMode()) {
+      Logger.log("Ручной режим активен. Обработка сообщений пропускается.");
+      return;
+    }
+
     const data = JSON.parse(e.postData.contents);
     Logger.log(`Входящие данные: ${JSON.stringify(data)}`);
 
