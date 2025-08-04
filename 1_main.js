@@ -7,21 +7,7 @@ function isCommand(msg) {
   return ALL_COMMANDS.includes(msg.toLowerCase());
 }
 
-function routeMessage(data) {
-  if (data.callback_query) {
-    handleCallbackQuery(data.callback_query);
-  } else if (data.message) {
-    const chatId = data.message.chat.id;
-    const text = data.message.text ? data.message.text.trim() : '';
-    const session = getSession(chatId);
 
-    if (isCommand(text)) {
-      handleCommand(chatId, text, text, data.message);
-    } else {
-      handleUserInput(chatId, text, session);
-    }
-  }
-}
 
 // --- Обработка нажатий на встроенные кнопки ---
 function handleCallbackQuery(callbackQuery) {

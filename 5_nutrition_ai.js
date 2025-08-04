@@ -210,6 +210,22 @@ function generateMenu(chatId) {
 }
 
 /**
+ * Обрабатывает свободный текстовый ввод, передавая его AI.
+ * @param {number|string} chatId - ID чата.
+ * @param {string} text - Текст сообщения.
+ */
+function handleFreeText(chatId, text) {
+  const userData = getUserData(chatId);
+  const prompt = `Ты — AI-диетолог. Твой текущий пользователь: ${JSON.stringify(userData)}. Он написал тебе: "${text}". Ответь ему в своей роли, учитывая его данные. Будь кратким и полезным.`;
+  const aiResponse = callGemini(prompt);
+  if (aiResponse) {
+    sendText(chatId, aiResponse);
+  } else {
+    sendText(chatId, "Произошла ошибка при обращении к AI. Попробуйте позже.");
+  }
+}
+
+/**
  * Форматирует JSON-объект меню в читаемый текст для Telegram.
  * @param {object} menu - JSON-объект меню.
  * @returns {string} - Отформатированное строковое представление меню.
