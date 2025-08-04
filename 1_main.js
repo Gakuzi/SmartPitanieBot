@@ -199,14 +199,8 @@ function handleUserInput(chatId, input, session) {
         break;
     }
   } else {
-    // Если пользователь не в сессии, передаем его сообщение AI
-    const prompt = `Пользователь пишет: "${input}". Ответь ему как AI-диетолог.`;
-    const aiResponse = callGemini(prompt);
-    if (aiResponse) {
-      sendText(chatId, aiResponse);
-    } else {
-      sendText(chatId, "Произошла ошибка AI. Попробуйте позже.", getMenu(chatId));
-    }
+    // Если пользователь не в сессии и ввел не команду, сообщаем ему об этом
+    sendText(chatId, "Я не распознал вашу команду. Пожалуйста, воспользуйтесь кнопками меню.", getMenu(chatId));
   }
 }
 
