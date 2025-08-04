@@ -333,7 +333,6 @@
                     rawTelegramData.textContent = JSON.stringify(response.rawInfo, null, 2);
                     deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
                     
-                    // Initial status before AI analysis
                     const initialAnalysis = {
                         status: 'WARNING',
                         summary: 'Требуется анализ',
@@ -363,7 +362,6 @@
                 if (response.ok) {
                     updateStatusPanel(response.analysis);
                 } else {
-                    // Even if AI fails, show the warning/error it generated
                     updateStatusPanel(response.analysis); 
                 }
             })
