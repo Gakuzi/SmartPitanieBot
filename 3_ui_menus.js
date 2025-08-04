@@ -9,26 +9,22 @@
  * Создает кастомное меню в интерфейсе Google Sheets.
  */
 function createCustomMenu() {
-  SpreadsheetApp.getUi()
-    .createMenu('🤖 SmartPit Бот')
-    .addItem('🚀 Управление вебхуком', 'showWebhookManagerDialog')
-    .addSeparator()
-    .addItem('🔑 Установить токен Telegram', 'setTelegramToken')
-    .addItem('🔑 Установить ключ Gemini', 'setGeminiApiKey')
-    .addSeparator()
-    .addItem('⚙️ Настроить инфраструктуру', 'setupProjectInfrastructure')
-    .addToUi();
+  const ui = SpreadsheetApp.getUi();
+  const adminMenu = ui.createMenu('Администрирование');
+
+  adminMenu.addItem('Настроить таблицу', 'setupAdminSheet');
+  adminMenu.addItem('Управление вебхуком', 'showWebhookManagerDialog');
+  adminMenu.addSeparator();
+
+  const settingsSubMenu = ui.createMenu('Настройки')
+      .addItem('Установить токен Telegram', 'setTelegramToken')
+      .addItem('Установить ключ Gemini', 'setGeminiApiKey');
+      
+  adminMenu.addSubMenu(settingsSubMenu);
+  adminMenu.addToUi();
 }
 
 // --- Диалоговые окна в Google Sheets ---
-
-/**
- * Логирует сообщение от клиента для диагностики.
- * @param {string} message - Сообщение от клиента.
- */
-function logFromClient(message) {
-    Logger.log(`[CLIENT LOG] ${message}`);
-}
 
 /**
  * Показывает диалоговое окно для управления вебхуком.
@@ -149,6 +145,93 @@ function deleteWebhookFromDialog() {
 }
 
 /**
+ * Настраивает таблицу администратора.
+ */
+function setupAdminSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  const scriptProps = PropertiesService.getScriptProperties();
+
+  try {
+    let usersSsId = scriptProps.getProperty('USERS_SPREADSHEET_ID');
+    let usersSs;
+
+    // 1. Ищем или создаем таблицу пользователей
+    if (usersSsId) {
+      try {
+        usersSs = SpreadsheetApp.openById(usersSsId);
+      } catch (e) {
+        usersSsId = null; // Файл был удален, создаем новый
+      }
+    }
+
+    if (!usersSsId) {
+      usersSs = SpreadsheetApp.create('SmartPit_Users');
+      usersSsId = usersSs.getId();
+      scriptProps.setProperty('USERS_SPREADSHEET_ID', usersSsId);
+    }
+
+    // 2. Проверяем и настраиваем структуру таблицы пользователей
+    const usersSheet = usersSs.getSheetByName('Пользователи') || usersSs.insertSheet('Пользователи', 0);
+    const headers = ['id', 'is_bot', 'first_name', 'last_name', 'username', 'language_code', 'is_premium', 'RegistrationDate', 'UserFolderLink', 'UserSheetLink', 'Категория', 'Администратор'];
+    let currentHeaders = [];
+    if (usersSheet.getLastColumn() > 0) {
+        currentHeaders = usersSheet.getRange(1, 1, 1, usersSheet.getLastColumn()).getValues()[0];
+    }
+    if (JSON.stringify(headers) !== JSON.stringify(currentHeaders)) {
+        usersSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        usersSheet.setFrozenRows(1);
+    }
+
+    // 3. Настройка категорий и проверки данных
+    let categoriesSheet = usersSs.getSheetByName('Категории');
+    if (!categoriesSheet) {
+      categoriesSheet = usersSs.insertSheet('Категории', 1);
+      categoriesSheet.getRange('A1:A3').setValues([['Стандарт'], ['Премиум'], ['Тестировщик']]);
+    }
+    const categoryRange = categoriesSheet.getRange(`A1:A${categoriesSheet.getLastRow()}`);
+    const rule = SpreadsheetApp.newDataValidation().requireValueInRange(categoryRange).build();
+    usersSheet.getRange('K2:K').setDataValidation(rule);
+    usersSheet.getRange('L2:L').insertCheckboxes();
+
+    // 4. Создание и настройка листа "Настройки" в основной таблице
+    let settingsSheet = ss.getSheetByName('Настройки');
+    if (!settingsSheet) {
+      settingsSheet = ss.insertSheet('Настройки', 0);
+    }
+    settingsSheet.clear();
+    const folder = DriveApp.getFileById(ss.getId()).getParents().next();
+    settingsSheet.getRange('A1:B3').setValues([
+      ['ID таблицы пользователей', `=HYPERLINK("${usersSs.getUrl()}"; "${usersSsId}")`],
+      ['ID папки проекта', `=HYPERLINK("${folder.getUrl()}"; "${folder.getId()}")`],
+      ['Режим работы', 'AI']
+    ]);
+
+    // 5. Создание и настройка листа "Пользователи (Импорт)"
+    let importSheet = ss.getSheetByName('Пользователи (Импорт)');
+    if (!importSheet) {
+      importSheet = ss.insertSheet('Пользователи (Импорт)', 1);
+    }
+    importSheet.clear();
+    importSheet.getRange('A1').setFormula(`=IMPORTRANGE("${usersSsId}"; "Пользователи!A:L")`);
+
+    // 6. Аккуратное удаление лишних листов
+    const requiredSheets = ['Настройки', 'Пользователи (Импорт)'];
+    ss.getSheets().forEach(sheet => {
+      if (requiredSheets.indexOf(sheet.getName()) === -1) {
+        ss.deleteSheet(sheet);
+      }
+    });
+
+    ui.alert('Таблица администратора успешно настроена.');
+
+  } catch (e) {
+    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при настройке таблицы администратора: ${e.message}\nStack: ${e.stack || 'N/A'}`);
+    ui.alert(`Произошла ошибка: ${e.message}`);
+  }
+}
+
+/**
  * Запрашивает и сохраняет токен Telegram.
  */
 function setTelegramToken() {
@@ -164,10 +247,8 @@ function setTelegramToken() {
     if (token) {
       PropertiesService.getScriptProperties().setProperty('TELEGRAM_TOKEN', token);
       ui.alert('Токен Telegram успешно сохранен.');
-      Logger.log('✅ Токен Telegram сохранен.');
     } else {
       ui.alert('Токен не может быть пустым.');
-      Logger.log('⚠️ Попытка сохранить пустой токен Telegram.');
     }
   }
 }
@@ -188,10 +269,8 @@ function setGeminiApiKey() {
     if (apiKey) {
       PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', apiKey);
       ui.alert('Ключ Gemini API успешно сохранен.');
-      Logger.log('✅ Ключ Gemini API сохранен.');
     } else {
       ui.alert('Ключ API не может быть пустым.');
-      Logger.log('⚠️ Попытка сохранить пустой ключ Gemini API.');
     }
   }
 }

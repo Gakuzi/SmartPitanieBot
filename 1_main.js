@@ -58,7 +58,7 @@ function handleCallbackQuery(callbackQuery) {
 // --- Обработка команд ---
 function handleCommand(chatId, msg, msgRaw, messageData) {
   if (msg === '/start') {
-    onboardUser(chatId); // Создаем инфраструктуру, если ее нет
+    onboardUser(chatId, messageData.from); // Создаем инфраструктуру, если ее нет
     const userFirstName = messageData.from.first_name || messageData.from.username || 'пользователь';
     startSetupDialog(chatId, userFirstName); // Запускаем диалог знакомства
     return;
@@ -180,5 +180,39 @@ function handleUserInput(chatId, input, session) {
       clearSession(chatId);
       sendText(chatId, 'Произошла небольшая ошибка. Ваше предыдущее действие было сброшено. Пожалуйста, выберите команду из меню еще раз.', getMenu(chatId));
       break;
+  }
+}
+
+function onboardUser(chatId, from) {
+  const scriptProps = PropertiesService.getScriptProperties();
+  const userFolderId = scriptProps.getProperty(String(chatId));
+  if (userFolderId) return; // Пользователь уже зарегистрирован
+
+  const rootFolder = DriveApp.getFolderById(scriptProps.getProperty('ROOT_FOLDER_ID'));
+  const userFolder = rootFolder.createFolder(String(chatId));
+  const userSpreadsheet = SpreadsheetApp.create(`${from.first_name || 'user'}_${chatId}`);
+  const userFile = DriveApp.getFileById(userSpreadsheet.getId());
+  userFolder.addFile(userFile);
+  DriveApp.getRootFolder().removeFile(userFile); // Убираем из корня диска
+
+  scriptProps.setProperty(String(chatId), userFolder.getId());
+
+  // Добавляем пользователя в общую таблицу
+  const usersSsId = scriptProps.getProperty('USERS_SPREADSHEET_ID');
+  if (usersSsId) {
+    const usersSs = SpreadsheetApp.openById(usersSsId);
+    const usersSheet = usersSs.getSheetByName('Пользователи');
+    usersSheet.appendRow([
+      from.id,
+      from.is_bot,
+      from.first_name || '',
+      from.last_name || '',
+      from.username || '',
+      from.language_code || '',
+      from.is_premium || false,
+      new Date(),
+      `=HYPERLINK("${userFolder.getUrl()}"; "${userFolder.getId()}")`,
+      `=HYPERLINK("${userSpreadsheet.getUrl()}"; "${userSpreadsheet.getId()}")`
+    ]);
   }
 }
