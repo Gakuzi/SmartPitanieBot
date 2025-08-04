@@ -28,38 +28,70 @@ function createCustomMenu() {
 function showWebhookManagerDialog() {
   const html = HtmlService.createHtmlOutputFromFile('webhook_manager_dialog')
     .setWidth(700)
-    .setHeight(650); // Увеличим высоту для нового контента
+    .setHeight(650);
   SpreadsheetApp.getUi().showModalDialog(html, 'Анализатор статуса вебхука');
 }
 
 /**
- * Получает статус вебхука, анализирует его с помощью AI и возвращает результат.
- * @returns {object} - Объект с технической информацией и анализом от AI.
+ * Получает статус вебхука, анализирует его и возвращает результат.
+ * Реализует отказоустойчивую пошаговую логику.
  */
 function getWebhookStatusForDialog() {
+  let webAppUrl = '';
+  let webhookInfo = {};
+
+  // --- Этап 1: Запрос к Telegram --- 
   try {
-    const webAppUrl = ScriptApp.getService().getUrl();
-    const webhookInfo = getTelegramWebhookInfo();
-    
-    // Отправляем данные на анализ в Gemini
-    const analysis = analyzeWebhookStatus(webhookInfo, webAppUrl);
-    
+    webAppUrl = ScriptApp.getService().getUrl();
+    webhookInfo = getTelegramWebhookInfo(); // Эта функция из 2_telegram_api.js
+    if (!webhookInfo.ok) {
+      // Если запрос к Telegram неуспешен, создаем ошибку
+      throw new Error(webhookInfo.description || 'Неизвестная ошибка Telegram API.');
+    }
+  } catch (e) {
+    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при получении данных от Telegram: ${e.message}`);
+    // Немедленно возвращаем типовую ошибку, не доходя до AI
+    return {
+      ok: false,
+      webAppUrl: webAppUrl, 
+      rawInfo: webhookInfo.result || {},
+      analysis: {
+        status: "CRITICAL",
+        summary: "Ошибка связи с Telegram",
+        details: `Не удалось получить данные о вебхуке от Telegram. Это может быть связано с неверным токеном бота. Ошибка: ${e.message}`,
+        solution: "1. Убедитесь, что токен Telegram бота указан верно в меню 'Установить токен Telegram'.\n2. Проверьте интернет-соединение и доступность серверов Telegram."
+      }
+    };
+  }
+
+  // --- Этап 2: Запрос к AI --- 
+  try {
+    const analysis = analyzeWebhookStatus(webhookInfo.result, webAppUrl);
+    // Проверяем, не вернул ли AI свою ошибку (например, таймаут или неверный ключ)
+    if (analysis.error) {
+      throw new Error(analysis.details || 'AI вернул ошибку без деталей.');
+    }
+    // Успех! Возвращаем полный анализ.
     return {
       ok: true,
       webAppUrl: webAppUrl,
-      rawInfo: webhookInfo.result || {},
+      rawInfo: webhookInfo.result,
       analysis: analysis
     };
-  } catch (e) {
-    Logger.log(`Ошибка в getWebhookStatusForDialog: ${e.message}`);
+  } catch (aiError) {
+    Logger.log(`⚠️ Ошибка анализа AI: ${aiError.message}`);
+    // Возвращаем типовую ошибку AI, но с сырыми данными от Telegram
     return {
-      ok: false,
-      error: e.message,
+      ok: true, // ok:true, потому что основная информация от Telegram получена
+      webAppUrl: webAppUrl,
+      rawInfo: webhookInfo.result,
       analysis: {
-        status: "CRITICAL",
-        summary: "Ошибка на стороне сервера",
-        details: "Не удалось получить или проанализировать статус вебхука. Ошибка: ${e.message}",
-        solution: "1. Проверьте логи скрипта (меню 'Выполнения').\n2. Убедитесь, что у вас есть доступ к API Telegram и Gemini.\n3. Попробуйте перезагрузить страницу."
+        status: "WARNING",
+        summary: "AI-анализатор недоступен",
+        details: `Данные от Telegram успешно получены, но не удалось получить их анализ от нейросети. Ошибка: ${aiError.message}`,
+        solution: "1. Проверьте правильность ключа Gemini API и его активацию в Google Cloud Console.\n2. Проблема может быть временной. Попробуйте обновить через минуту.",
+        // Добавляем сырые данные в текстовом виде для пользователя
+        rawTelegramData: JSON.stringify(webhookInfo.result, null, 2)
       }
     };
   }

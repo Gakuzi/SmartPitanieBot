@@ -147,14 +147,43 @@
     .message.success { background-color: #d4edda; color: #155724; }
     .message.error { background-color: #f8d7da; color: #721c24; }
     .hidden { display: none; }
-    .loader { text-align: center; padding: 40px; font-size: 1.2em; color: #6c757d; }
+    
+    .loader {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        flex-direction: column;
+    }
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    #loaderStatus {
+        font-size: 1.1em;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Анализатор статуса вебхука</h2>
 
-    <div id="loader" class="loader">Загрузка и анализ данных...</div>
+    <div id="loader" class="loader">
+        <div class="spinner"></div>
+        <div id="loaderStatus">Инициализация...</div>
+    </div>
 
     <div id="mainContent" class="hidden">
         <div id="statusPanel" class="status-panel">
@@ -169,6 +198,10 @@
             <div class="info-section">
                 <h3>Решение</h3>
                 <p id="statusSolution"></p>
+            </div>
+            <div id="raw-data-section" class="info-section hidden">
+                <h3>Сырые данные от Telegram</h3>
+                <pre id="rawTelegramData"></pre>
             </div>
         </div>
 
@@ -192,13 +225,18 @@
   </div>
 
   <script>
+    const TIMEOUT_DURATION = 30000; // 30 секунд
+    let requestTimeout = null;
+
     const loader = document.getElementById('loader');
+    const loaderStatus = document.getElementById('loaderStatus');
     const mainContent = document.getElementById('mainContent');
     const statusPanel = document.getElementById('statusPanel');
     const statusIcon = document.getElementById('statusIcon');
     const statusSummary = document.getElementById('statusSummary');
     const statusDetails = document.getElementById('statusDetails');
-    const statusSolution = document.getElementById('statusSolution');
+    const rawDataSection = document.getElementById('raw-data-section');
+    const rawTelegramData = document.getElementById('rawTelegramData');
     const autoWebAppUrlElem = document.getElementById('autoWebAppUrl');
     const manualWebhookUrlInput = document.getElementById('manualWebhookUrl');
     const setWebhookBtn = document.getElementById('setWebhookBtn');
@@ -209,6 +247,18 @@
 
     let autoUrl = '';
 
+    function showLoader(statusText) {
+        loaderStatus.textContent = statusText;
+        loader.classList.remove('hidden');
+        mainContent.classList.add('hidden');
+    }
+
+    function hideLoader() {
+        clearTimeout(requestTimeout);
+        loader.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+    }
+
     function showMessage(msg, type) {
       dialogMessage.textContent = msg;
       dialogMessage.className = `message ${type}`;
@@ -216,6 +266,8 @@
 
     function updateStatusPanel(analysis) {
         statusPanel.className = 'status-panel'; // Reset classes
+        rawDataSection.classList.add('hidden'); // Hide raw data by default
+
         if (!analysis) {
             analysis = { status: 'CRITICAL', summary: 'Ошибка анализа', details: 'Не удалось получить анализ от AI.', solution: 'Проверьте логи и повторите попытку.' };
         }
@@ -238,57 +290,85 @@
         statusSummary.textContent = analysis.summary || 'Нет данных';
         statusDetails.innerHTML = (analysis.details || 'Нет данных').replace(/\n/g, '<br>');
         statusSolution.innerHTML = (analysis.solution || 'Нет данных').replace(/\n/g, '<br>');
+
+        if (analysis.rawTelegramData) {
+            rawTelegramData.textContent = analysis.rawTelegramData;
+            rawDataSection.classList.remove('hidden');
+        }
     }
 
-    function loadWebhookInfo() {
-      loader.classList.remove('hidden');
-      mainContent.classList.add('hidden');
-      showMessage('', 'hidden'); // Clear previous messages
-
-      google.script.run
-        .withSuccessHandler(function(response) {
-          if (response.ok) {
-            autoUrl = response.webAppUrl;
-            autoWebAppUrlElem.textContent = autoUrl;
-            updateStatusPanel(response.analysis);
-            deleteWebhookBtn.style.display = response.rawInfo.url ? 'inline-block' : 'none';
-          } else {
-             updateStatusPanel(response.analysis);
-          }
-          loader.classList.add('hidden');
-          mainContent.classList.remove('hidden');
-        })
-        .withFailureHandler(function(error) {
-          const errorAnalysis = {
-              status: 'CRITICAL',
-              summary: 'Критическая ошибка клиента',
-              details: `Не удалось выполнить запрос к серверу: ${error.message}`,
-              solution: 'Закройте и снова откройте диалоговое окно. Проверьте консоль браузера на наличие ошибок.'
-          };
-          updateStatusPanel(errorAnalysis);
-          loader.classList.add('hidden');
-          mainContent.classList.remove('hidden');
-        })
-        .getWebhookStatusForDialog();
+    function handleTimeout() {
+        hideLoader();
+        const timeoutAnalysis = {
+            status: 'CRITICAL',
+            summary: 'Сервер не отвечает (Тайм-аут)',
+            details: `Ваш запрос к серверу Google Apps Script занял слишком много времени (${TIMEOUT_DURATION / 1000} секунд) и был прерван. Это может произойти по нескольким причинам.`,
+            solution: `1. **Проверьте API ключи:** Неправильный или неактивный ключ Gemini API может вызывать бесконечное ожидание.\n2. **Проверьте логи выполнения:** Откройте ваш проект в Apps Script, перейдите в раздел \"Выполнения\" и посмотрите, нет ли там ошибок, которые мешают скрипту завершиться.\n3. **Проблемы с сетью Google:** Иногда сервисы Google могут работать медленно. Попробуйте повторить запрос через несколько минут.`
+        };
+        updateStatusPanel(timeoutAnalysis);
     }
 
-    function handleAction(actionFunction, ...args) {
-        loader.classList.remove('hidden');
-        mainContent.classList.add('hidden');
-        google.script.run
-            .withSuccessHandler(function(result) {
-                if (result.ok) {
-                    showMessage('Операция успешно выполнена!', 'success');
+    function runServerFunction(functionName, ...args) {
+        return new Promise((resolve, reject) => {
+            const handler = (response) => {
+                clearTimeout(requestTimeout);
+                if (response && response.error) {
+                    reject(new Error(response.error));
                 } else {
-                    showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
+                    resolve(response);
                 }
-                loadWebhookInfo(); // Always reload
-            })
-            .withFailureHandler(function(error) {
+            };
+            requestTimeout = setTimeout(() => reject(new Error('timeout')), TIMEOUT_DURATION);
+            google.script.run.withSuccessHandler(handler).withFailureHandler(reject)[functionName](...args);
+        });
+    }
+
+    async function loadWebhookInfo() {
+        showLoader('Получение статуса вебхука...');
+        showMessage('', 'hidden');
+        try {
+            const response = await runServerFunction('getWebhookStatusForDialog');
+            if (response.ok) {
+                autoUrl = response.webAppUrl;
+                autoWebAppUrlElem.textContent = autoUrl;
+                updateStatusPanel(response.analysis);
+                deleteWebhookBtn.style.display = response.rawInfo.url ? 'inline-block' : 'none';
+            } else {
+                updateStatusPanel(response.analysis);
+            }
+        } catch (error) {
+            if (error.message === 'timeout') {
+                handleTimeout();
+            } else {
+                const errorAnalysis = {
+                    status: 'CRITICAL',
+                    summary: 'Критическая ошибка клиента',
+                    details: `Не удалось выполнить запрос к серверу: ${error.message}`,
+                    solution: 'Закройте и снова откройте диалоговое окно. Проверьте консоль браузера на наличие ошибок.'
+                };
+                updateStatusPanel(errorAnalysis);
+            }
+        }
+        hideLoader();
+    }
+
+    async function handleAction(actionFunction, ...args) {
+        showLoader('Выполнение операции на сервере...');
+        try {
+            const result = await runServerFunction(actionFunction, ...args);
+            if (result.ok) {
+                showMessage('Операция успешно выполнена! Перезагружаю статус...', 'success');
+            } else {
+                showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
+            }
+        } catch (error) {
+            if (error.message === 'timeout') {
+                handleTimeout();
+            } else {
                 showMessage(`Критическая ошибка: ${error.message}`, 'error');
-                loadWebhookInfo(); // Try to reload to show current state
-            })
-            [actionFunction](...args);
+            }
+        }
+        loadWebhookInfo(); // Always reload
     }
 
     setWebhookBtn.addEventListener('click', function() {

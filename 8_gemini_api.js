@@ -14,7 +14,7 @@ function callGemini(prompt, isJsonResponse = true) {
 
   if (!apiKey) {
     Logger.log("❌ Ошибка: Ключ GEMINI_API_KEY не найден в ScriptProperties.");
-    return null;
+    return { error: 'Ключ GEMINI_API_KEY не найден', details: 'Ключ API не был найден в настройках скрипта.' };
   }
 
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
@@ -31,7 +31,9 @@ function callGemini(prompt, isJsonResponse = true) {
     method: 'post',
     contentType: 'application/json',
     payload: JSON.stringify(payload),
-    muteHttpExceptions: true
+    muteHttpExceptions: true,
+    // Устанавливаем тайм-аут на 20 секунд
+    connectTimeout: 20000 
   };
 
   try {
@@ -45,7 +47,7 @@ function callGemini(prompt, isJsonResponse = true) {
 
       if (!rawText) {
         Logger.log(`❌ Gemini API не вернул текст. Ответ: ${responseBody}`);
-        return null;
+        return { error: 'Пустой ответ от Gemini API', details: responseBody };
       }
 
       if (isJsonResponse) {
@@ -61,11 +63,11 @@ function callGemini(prompt, isJsonResponse = true) {
       }
     } else {
       Logger.log(`❌ Ошибка вызова Gemini API. Статус: ${responseCode}. Ответ: ${responseBody}`);
-      return null;
+      return { error: `Ошибка API. Статус: ${responseCode}`, details: responseBody };
     }
   } catch (e) {
     Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при вызове UrlFetchApp: ${e.message}`);
-    return null;
+    return { error: 'Критическая ошибка UrlFetchApp', details: e.message };
   }
 }
 
@@ -95,11 +97,9 @@ function analyzeWebhookStatus(webhookInfo, webAppUrl) {
  * @returns {string|null} - Сгенерированный промт или null.
  */
 function generateWebhookAnalysisPrompt(webhookInfo, webAppUrl) {
-    if (!webhookInfo || !webhookInfo.result || !webhookInfo.result.url) {
+    if (!webhookInfo || !webhookInfo.url) {
         return null; // Вебхук не установлен
     }
-
-    const { result } = webhookInfo;
 
     return `
     Ты — технический эксперт, который помогает пользователям Google Apps Script настроить Telegram вебхук.
@@ -107,7 +107,7 @@ function generateWebhookAnalysisPrompt(webhookInfo, webAppUrl) {
 
     Вот данные для анализа:
     - Ожидаемый URL веб-приложения: ${webAppUrl}
-    - Данные от Telegram API (getWebhookInfo): ${JSON.stringify(result, null, 2)}
+    - Данные от Telegram API (getWebhookInfo): ${JSON.stringify(webhookInfo, null, 2)}
 
     Проанализируй эти данные и верни JSON-объект СТРОГО следующей структуры:
     {
