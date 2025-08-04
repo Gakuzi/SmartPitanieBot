@@ -91,6 +91,10 @@ function triggerNutritionCalculation(chatId, userData) {
  * @param {string} userName - Имя пользователя.
  */
 function startSetupDialog(chatId, userName) {
+  if (!isAiModeEnabled()) {
+    sendText(chatId, "🤖 AI-ассистент в данный момент отключен администратором. Пожалуйста, воспользуйтесь командами из меню для настройки профиля вручную.", getMenu(chatId));
+    return;
+  }
   // Устанавливаем состояние пользователя
   setUserState(chatId, STATES.AWAITING_SETUP);
   
