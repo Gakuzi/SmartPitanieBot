@@ -18,13 +18,13 @@
     h2 {
       color: #343a40;
       text-align: center;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       font-weight: 700;
     }
     .status-panel {
         border-radius: 8px;
-        margin-bottom: 20px;
-        padding: 20px;
+        margin-bottom: 15px;
+        padding: 15px 20px;
         border-left: 5px solid;
         background-color: #fff;
         box-shadow: 0 2px 10px rgba(0,0,0,0.08);
@@ -35,31 +35,43 @@
     .status-header {
         display: flex;
         align-items: center;
-        font-size: 1.4em;
+        font-size: 1.3em;
         font-weight: 500;
-        margin-bottom: 15px;
     }
-    .status-icon { font-size: 1.5em; margin-right: 15px; }
+    .status-icon { font-size: 1.4em; margin-right: 15px; }
     .status-panel.ok .status-header { color: #28a745; }
     .status-panel.warning .status-header { color: #ffc107; }
     .status-panel.critical .status-header { color: #dc3545; }
 
-    .info-section { margin-top: 15px; }
-    .info-section h3 {
+    details { margin-top: 15px; border-top: 1px solid #e9ecef; padding-top: 10px; }
+    summary {
         font-size: 1.1em;
         color: #495057;
-        margin-bottom: 8px;
-        border-bottom: 2px solid #e9ecef;
-        padding-bottom: 5px;
+        font-weight: 500;
+        cursor: pointer;
+        outline: none;
     }
-    .info-section p, .info-section pre {
+    summary::-webkit-details-marker { display: none; }
+    summary::before {
+        content: '▶';
+        font-size: 0.8em;
+        margin-right: 8px;
+        display: inline-block;
+        transition: transform 0.2s;
+    }
+    details[open] > summary::before {
+        transform: rotate(90deg);
+    }
+
+    .info-content p, .info-content pre {
         font-size: 0.95em;
         line-height: 1.6;
         color: #495057;
         white-space: pre-wrap;
         word-wrap: break-word;
+        margin-top: 8px;
     }
-    .info-section pre {
+    .info-content pre {
         background-color: #e9ecef;
         padding: 10px;
         border-radius: 5px;
@@ -73,10 +85,10 @@
         padding: 20px;
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        margin-bottom: 20px;
+        margin-bottom: 15px;
     }
     .url-section strong { display: block; margin-bottom: 10px; color: #343a40; }
-    .url-section p { line-height: 1.8; }
+    .url-section p { line-height: 1.7; margin-top: 0; }
     .url-section input[type="text"] {
         width: 100%;
         padding: 10px;
@@ -86,17 +98,12 @@
         font-size: 1em;
         margin-top: 10px;
     }
-    .url-section input[type="text"]:focus {
-        border-color: #80bdff;
-        outline: 0;
-        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
-    }
 
     .button-group {
       display: flex;
       justify-content: space-between;
       gap: 15px;
-      margin-top: 25px;
+      margin-top: 20px;
     }
     .btn {
       padding: 10px 20px;
@@ -110,52 +117,20 @@
     }
     .btn:hover { transform: translateY(-1px); }
     .btn-primary { background-color: #007bff; color: white; }
-    .btn-primary:hover { background-color: #0056b3; }
     .btn-danger { background-color: #dc3545; color: white; }
-    .btn-danger:hover { background-color: #c82333; }
     .btn-secondary { background-color: #6c757d; color: white; }
-    .btn-secondary:hover { background-color: #5a6268; }
     .btn-refresh { background-color: #17a2b8; color: white; }
-    .btn-refresh:hover { background-color: #117a8b; }
     .btn-ai { background-color: #6f42c1; color: white; }
-    .btn-ai:hover { background-color: #5a32a3; }
 
-    .message {
-      margin-top: 20px;
-      padding: 12px;
-      border-radius: 5px;
-      text-align: center;
-      font-weight: 500;
-    }
+    .message { margin-top: 15px; padding: 12px; border-radius: 5px; text-align: center; font-weight: 500; }
     .message.success { background-color: #d4edda; color: #155724; }
     .message.error { background-color: #f8d7da; color: #721c24; }
     .hidden { display: none; }
     
-    .loader-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 80px 40px;
-        flex-direction: column;
-    }
-    .spinner {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-        margin-bottom: 20px;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    .loader-status {
-        font-size: 1.1em;
-        color: #6c757d;
-        font-weight: 500;
-    }
+    .loader-container { display: flex; align-items: center; justify-content: center; padding: 80px 40px; flex-direction: column; }
+    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loader-status { font-size: 1.1em; color: #6c757d; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -163,12 +138,10 @@
 
   <script>
     const root = document.getElementById('root');
-    let globalBasicInfo = {}; // Store data globally
-
-    // --- TEMPLATING FUNCTIONS ---
+    let globalBasicInfo = {};
 
     function renderLoader(statusText) {
-      return `
+      root.innerHTML = `
         <div class="loader-container">
             <div class="spinner"></div>
             <div class="loader-status">${statusText}</div>
@@ -177,75 +150,65 @@
 
     function renderMainContent(data) {
       const { analysis, basicInfo } = data;
-      const statusMap = {
-          OK: { className: 'ok', icon: '✅' },
-          WARNING: { className: 'warning', icon: '⚠️' },
-          CRITICAL: { className: 'critical', icon: '❌' }
-      };
+      const statusMap = { OK: {c: 'ok', i: '✅'}, WARNING: {c: 'warning', i: '⚠️'}, CRITICAL: {c: 'critical', i: '❌'} };
       const statusInfo = statusMap[analysis.status] || statusMap.CRITICAL;
 
-      return `
+      const devToolsHidden = analysis.status === 'OK' ? 'hidden' : '';
+      const aiButtonHidden = analysis.status === 'OK' ? 'hidden' : '';
+
+      root.innerHTML = `
         <h2>Анализатор статуса вебхука</h2>
-        <div id="statusPanel" class="status-panel ${statusInfo.className}">
+        <div id="statusPanel" class="status-panel ${statusInfo.c}">
             <div class="status-header">
-                <span class="status-icon">${statusInfo.icon}</span>
+                <span class="status-icon">${statusInfo.i}</span>
                 <span>${analysis.summary || 'Нет данных'}</span>
             </div>
-            <div class="info-section">
-                <h3>Подробности</h3>
-                <p>${(analysis.details || 'Нет данных').replace(/\n/g, '<br>')}</p>
-            </div>
-            <div class="info-section">
-                <h3>Решение</h3>
-                <p>${(analysis.solution || 'Нет данных').replace(/\n/g, '<br>')}</p>
-            </div>
-            <div class="info-section">
-                <h3>Сырые данные от Telegram</h3>
-                <pre>${JSON.stringify(basicInfo.rawInfo, null, 2)}</pre>
-            </div>
-            <div class="info-section ${analysis.status === 'OK' ? 'hidden' : ''}">
-                <h3>Инструменты разработчика</h3>
-                <div class="dev-links">
-                    <a href="${basicInfo.editorUrl || '#'}" target="_blank">Открыть в Apps Script</a>
-                </div>
-            </div>
+            <details ${analysis.status !== 'OK' ? 'open' : ''}>
+                <summary>Подробности</summary>
+                <div class="info-content"><p>${(analysis.details || 'Нет данных').replace(/\n/g, '<br>')}</p></div>
+            </details>
+            <details ${analysis.status !== 'OK' ? 'open' : ''}>
+                <summary>Решение</summary>
+                <div class="info-content"><p>${(analysis.solution || 'Нет данных').replace(/\n/g, '<br>')}</p></div>
+            </details>
+            <details>
+                <summary>Сырые данные от Telegram</summary>
+                <div class="info-content"><pre>${JSON.stringify(basicInfo.rawInfo, null, 2)}</pre></div>
+            </details>
+            <details class="${devToolsHidden}" ${!devToolsHidden ? 'open' : ''}>
+                <summary>Инструменты разработчика</summary>
+                <div class="info-content dev-links"><a href="${basicInfo.editorUrl || '#'}" target="_blank">Открыть в Apps Script</a></div>
+            </details>
         </div>
 
         <div class="url-section">
             <strong>URL Веб-приложения</strong>
-            <p>
-              1. Откройте <a href="${basicInfo.editorUrl || '#'}" target="_blank">редактор скриптов вашего проекта</a>.<br>
-              2. Следуйте официальной инструкции по развертыванию веб-приложения.<br>
-              3. Вставьте URL ниже и нажмите "Установить / Обновить".
-            </p>
+            <p>Вставьте URL вашего веб-приложения и нажмите "Установить".</p>
             <input type="text" id="manualWebhookUrl" placeholder="https://script.google.com/macros/s/ваше_id/exec" value="">
         </div>
 
         <div class="button-group">
           <button class="btn btn-refresh" id="refreshBtn">Обновить</button>
-          <button class="btn btn-ai ${analysis.status === 'OK' ? 'hidden' : ''}" id="aiAnalyzeBtn">Запустить AI-анализ</button>
+          <button class="btn btn-ai ${aiButtonHidden}" id="aiAnalyzeBtn">AI-анализ</button>
           <button class="btn btn-primary" id="setWebhookBtn">Установить / Обновить</button>
           <button class="btn btn-danger" id="deleteWebhookBtn" style="display: ${basicInfo.rawInfo.url ? 'inline-block' : 'none'};">Удалить</button>
           <button class="btn btn-secondary" id="closeDialogBtn">Закрыть</button>
         </div>
 
         <div id="dialogMessage" class="message hidden"></div>`;
+      
+      bindEventListeners();
     }
-
-    // --- EVENT BINDING ---
 
     function bindEventListeners() {
       document.getElementById('refreshBtn').addEventListener('click', loadBasicInfo);
       const aiBtn = document.getElementById('aiAnalyzeBtn');
-      if (aiBtn) {
+      if (aiBtn && !aiBtn.classList.contains('hidden')) {
         aiBtn.addEventListener('click', runAiAnalysis);
       }
       document.getElementById('setWebhookBtn').addEventListener('click', () => {
         const url = document.getElementById('manualWebhookUrl').value.trim();
-        if (!url) {
-          showMessage('URL для установки не найден. Введите его вручную.', 'error');
-          return;
-        }
+        if (!url) { showMessage('URL для установки не найден.', 'error'); return; }
         handleAction('setWebhookFromDialog', url);
       });
       const deleteBtn = document.getElementById('deleteWebhookBtn');
@@ -255,41 +218,22 @@
       document.getElementById('closeDialogBtn').addEventListener('click', () => google.script.host.close());
     }
 
-    // --- DATA & ACTIONS ---
-
     function showMessage(msg, type) {
       const dialogMessage = document.getElementById('dialogMessage');
-      if (dialogMessage) {
-        dialogMessage.textContent = msg;
-        dialogMessage.className = `message ${type}`;
-      }
+      if (dialogMessage) { dialogMessage.textContent = msg; dialogMessage.className = `message ${type}`; }
     }
 
     function handleFailure(error, context) {
-        const errorAnalysis = {
-            status: 'CRITICAL',
-            summary: `Критическая ошибка: ${context}`,
-            details: `Произошла непредвиденная ошибка: ${error.message}`,
-            solution: 'Проверьте консоль браузера (F12) для деталей.'
-        };
-        root.innerHTML = renderMainContent({ analysis: errorAnalysis, basicInfo: globalBasicInfo });
-        bindEventListeners();
+        const errorAnalysis = { status: 'CRITICAL', summary: `Критическая ошибка: ${context}`, details: `Произошла непредвиденная ошибка: ${error.message}`, solution: 'Проверьте консоль браузера (F12) для деталей.' };
+        renderMainContent({ analysis: errorAnalysis, basicInfo: globalBasicInfo });
     }
 
     function loadBasicInfo() {
-        root.innerHTML = renderLoader('Получение базовой информации от Telegram...');
+        renderLoader('Получение базовой информации от Telegram...');
         google.script.run
             .withSuccessHandler(response => {
-                if (response.ok) {
-                    globalBasicInfo = response.basicInfo; // Save for later use
-                    root.innerHTML = renderMainContent(response);
-                    bindEventListeners();
-                } else {
-                    // Even on failure, the server should return a valid structure
-                    globalBasicInfo = response.basicInfo || {};
-                    root.innerHTML = renderMainContent(response);
-                    bindEventListeners();
-                }
+                globalBasicInfo = response.basicInfo || {};
+                renderMainContent(response.ok ? response : { basicInfo: globalBasicInfo, analysis: { status: 'CRITICAL', summary: 'Ошибка ответа сервера', details: response.error } });
             })
             .withFailureHandler(err => handleFailure(err, 'Получение базовой информации'))
             .getBasicWebhookInfo();
@@ -297,20 +241,16 @@
 
     function runAiAnalysis() {
         const manualUrl = document.getElementById('manualWebhookUrl').value.trim();
-        if (!manualUrl) {
-            showMessage('URL для анализа не найден. Введите его вручную.', 'error');
-            return;
-        }
-        root.innerHTML = renderLoader('Запуск AI-анализа... Это может занять до 30 секунд.');
+        if (!manualUrl) { showMessage('URL для анализа не найден.', 'error'); return; }
+        renderLoader('Запуск AI-анализа... Это может занять до 30 секунд.');
         const analysisData = { ...globalBasicInfo, webAppUrl: manualUrl };
         google.script.run
             .withSuccessHandler(response => {
                 if (response.ok) {
-                    globalBasicInfo = response.basicInfo; // Update global state
-                    root.innerHTML = renderMainContent(response);
-                    bindEventListeners();
+                    globalBasicInfo = response.basicInfo;
+                    renderMainContent(response);
                 } else {
-                    handleFailure(new Error(response.error), 'AI-анализ');
+                    handleFailure(new Error(response.error || 'Неизвестная ошибка AI'), 'AI-анализ');
                 }
             })
             .withFailureHandler(err => handleFailure(err, 'AI-анализ'))
@@ -318,16 +258,13 @@
     }
 
     function handleAction(actionFunction, ...args) {
-        root.innerHTML = renderLoader('Выполнение операции на сервере...');
+        renderLoader('Выполнение операции на сервере...');
         google.script.run
-            .withSuccessHandler(result => {
-                loadBasicInfo(); // Reload everything to show the new state
-            })
+            .withSuccessHandler(result => { loadBasicInfo(); })
             .withFailureHandler(err => handleFailure(err, 'Действие с вебхуком'))
             [actionFunction](...args);
     }
 
-    // --- INITIAL LOAD ---
     document.addEventListener('DOMContentLoaded', loadBasicInfo);
   </script>
 </body>
