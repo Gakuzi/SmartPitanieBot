@@ -308,9 +308,15 @@
         statusDetails.innerHTML = (analysis.details || 'Нет данных').replace(/\n/g, '<br>');
         statusSolution.innerHTML = (analysis.solution || 'Нет данных').replace(/\n/g, '<br>');
 
-        if (analysis.status !== 'OK') {
+        if (basicInfo.editorUrl) {
             devLinksSection.classList.remove('hidden');
             gasEditorLink.href = basicInfo.editorUrl;
+        }
+        if (basicInfo.localPath) {
+            vscodeLink.href = `vscode://file/${basicInfo.localPath}`;
+            vscodeLink.style.display = 'inline-block';
+        } else {
+            vscodeLink.style.display = 'none';
         }
     }
 
@@ -375,7 +381,10 @@
                     showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
                 }
             })
-            .withFailureHandler(err => handleFailure(err, 'Действие с вебхуком'))
+            .withFailureHandler(err => {
+                hideLoader(); 
+                handleFailure(err, 'Действие с вебхуком');
+            })
             [actionFunction](...args);
     }
 
