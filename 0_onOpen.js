@@ -35,20 +35,39 @@ function sendTestMessage3() {
 
 /**
  * Запрашивает у пользователя ключ Gemini API и сохраняет его.
+ * Если ключ уже установлен, предлагает его изменить.
  */
 function promptAndSetGeminiApiKey() {
   const ui = SpreadsheetApp.getUi();
+  const scriptProps = PropertiesService.getScriptProperties();
+  const currentApiKey = scriptProps.getProperty('GEMINI_API_KEY');
+
+  let promptTitle;
+  let promptMessage;
+
+  if (currentApiKey) {
+    promptTitle = 'Изменить Gemini API Key';
+    promptMessage = 'Ключ Gemini API уже установлен. Введите новый ключ или оставьте пустым для отмены:';
+  } else {
+    promptTitle = 'Добавить Gemini API Key';
+    promptMessage = 'Пожалуйста, введите ваш Gemini API Key:';
+  }
+
   const result = ui.prompt(
-      'Установка Gemini API Key',
-      'Пожалуйста, введите ваш Gemini API Key:',
+      promptTitle,
+      promptMessage,
       ui.ButtonSet.OK_CANCEL);
 
   // Проверяем ответ пользователя
   if (result.getSelectedButton() == ui.Button.OK) {
     const apiKey = result.getResponseText();
-    // Вызываем функцию из 0_setup.js для сохранения ключа
-    setGeminiApiKey(apiKey); 
+    if (apiKey.trim() !== '') {
+      // Вызываем функцию из 0_setup.js для сохранения ключа
+      setGeminiApiKey(apiKey);
+    } else {
+      ui.alert('Ключ не был изменен, так как поле было пустым.');
+    }
   } else {
-    ui.alert('Установка ключа отменена.');
+    ui.alert('Установка/изменение ключа отменено.');
   }
 }
