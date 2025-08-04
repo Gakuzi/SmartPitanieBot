@@ -17,6 +17,12 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     Logger.log(`Входящие данные: ${JSON.stringify(data)}`);
 
+    // Определяем chatId заранее
+    const chatId = data.message ? data.message.chat.id : (data.callback_query ? data.callback_query.from.id : null);
+    if (chatId) {
+      sendChatAction(chatId, 'typing');
+    }
+
     if (data.callback_query) {
       // Обработка нажатий на встроенные кнопки
       handleCallbackQuery(data.callback_query);
@@ -28,7 +34,6 @@ function doPost(e) {
       return;
     }
 
-    const chatId = data.message.chat.id;
     const text = data.message.text.trim();
     const session = getSession(chatId);
 
