@@ -404,3 +404,22 @@ function clearCurrentSheet() {
     ui.alert('Очистка отменена.');
   }
 }
+
+/**
+ * Возвращает объект ReplyKeyboardMarkup для Telegram с основными командами.
+ * @param {number} chatId - ID чата пользователя (не используется в этой базовой реализации, но может быть полезен для персонализации).
+ * @returns {object} Объект ReplyKeyboardMarkup.
+ */
+function getMenu(chatId) {
+  return {
+    reply_markup: {
+      keyboard: [
+        [{ text: '/купить' }, { text: '/готовим' }],
+        [{ text: '/меню' }, { text: '/осталось' }],
+        [{ text: '/start' }]
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: false
+    }
+  };
+}
