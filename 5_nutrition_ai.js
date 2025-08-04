@@ -210,18 +210,25 @@ function generateMenu(chatId) {
 }
 
 /**
- * Обрабатывает свободный текстовый ввод, передавая его AI.
+ * Обрабатывает свободный текстовый ввод, передавая его AI, и корректно распаковывает ответ.
  * @param {number|string} chatId - ID чата.
  * @param {string} text - Текст сообщения.
  */
 function handleFreeText(chatId, text) {
+  sendChatAction(chatId); // Отправляем "печатает..."
+
   const userData = getUserData(chatId);
-  const prompt = `Ты — AI-диетолог. Твой текущий пользователь: ${JSON.stringify(userData)}. Он написал тебе: "${text}". Ответь ему в своей роли, учитывая его данные. Будь кратким и полезным.`;
-  const aiResponse = callGemini(prompt);
-  if (aiResponse) {
-    sendText(chatId, aiResponse);
+  const prompt = `Ты — AI-диетолог. Твой текущий пользователь: ${JSON.stringify(userData)}. Он написал тебе: "${text}". Ответь ему в своей роли, учитывая его данные. Будь кратким и полезным. Твой ответ должен быть в формате JSON вида: {"response": "Твой ответ"}.`;
+  const aiResponse = callGemini(prompt, true); // Запрашиваем JSON
+
+  if (aiResponse && aiResponse.response) {
+    sendText(chatId, aiResponse.response, getMenu(chatId));
+  } else if (aiResponse && aiResponse.error) {
+    Logger.log(`Ошибка AI при свободном общении для ${chatId}: ${aiResponse.details}`);
+    sendText(chatId, `Произошла ошибка AI: ${aiResponse.error}. Попробуйте позже.`, getMenu(chatId));
   } else {
-    sendText(chatId, "Произошла ошибка при обращении к AI. Попробуйте позже.");
+    Logger.log(`Неожиданный ответ от AI для ${chatId}: ${JSON.stringify(aiResponse)}`);
+    sendText(chatId, "Произошла непредвиденная ошибка при обращении к AI. Попробуйте позже.", getMenu(chatId));
   }
 }
 

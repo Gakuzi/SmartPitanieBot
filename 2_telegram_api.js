@@ -74,6 +74,35 @@ function sendFormattedText(chatId, geminiResponse) {
   sendText(chatId, geminiResponse.text, keyboard);
 }
 
+/**
+ * Отправляет действие чата (например, "печатает...").
+ * @param {string|number} chatId - ID чата.
+ * @param {string} action - Действие (например, "typing").
+ */
+function sendChatAction(chatId, action = 'typing') {
+  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+  if (!telegramToken) return;
+
+  const url = `https://api.telegram.org/bot${telegramToken}/sendChatAction`;
+  const payload = {
+    chat_id: String(chatId),
+    action: action,
+  };
+
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  try {
+    UrlFetchApp.fetch(url, options);
+  } catch (e) {
+    Logger.log(`❌ ОШИБКА при отправке действия в чат ${chatId}: ${e.message}`);
+  }
+}
+
 
 function editMessageText(chatId, messageId, text) {
   const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
