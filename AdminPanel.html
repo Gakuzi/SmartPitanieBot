@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <style>
+      .container { padding: 20px; }
+      button {
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 10px;
+        font-size: 14px;
+      }
+      .header {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 10px;
+      }
+      .zone {
+        margin-top: 20px;
+      }
+      .zone h4 {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 10px;
+      }
+      .red {
+        background-color: #f44336;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">Панель управления</div>
+
+      <div>
+        <h4>Основные действия</h4>
+        <button class="action" onclick="runAction('setup')">⚙️ Настроить таблицу администратора</button>
+        <button class="action" onclick="runAction('webhook')">🔄 Управление вебхуком</button>
+      </div>
+
+      <div class="zone">
+        <h4>Опасная зона</h4>
+        <button class="red" onclick="runAction('clear')">🗑️ Очистить текущую таблицу</button>
+      </div>
+    </div>
+
+    <script>
+      function runAction(actionName) {
+        document.querySelectorAll('.action').forEach(b => b.disabled = true);
+        google.script.run
+          .withSuccessHandler(() => {
+            // Можно добавить уведомление или обновить панель
+            document.querySelectorAll('.action').forEach(b => b.disabled = false);
+            google.script.host.close(); // Закрыть панель после успешного выполнения
+          })
+          .withFailureHandler((error) => {
+            alert('Ошибка выполнения: ' + error.message);
+            document.querySelectorAll('.action').forEach(b => b.disabled = false);
+          })
+          .runAdminAction(actionName);
+      }
+    </script>
+  </body>
+</html>
