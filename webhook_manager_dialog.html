@@ -99,13 +99,8 @@
       margin-bottom: 10px;
       color: #343a40;
     }
-    .url-section code {
-        background-color: #e9ecef;
-        padding: 3px 6px;
-        border-radius: 4px;
-        word-break: break-all;
-        display: block;
-        margin-bottom: 15px;
+    .url-section p {
+      line-height: 1.8;
     }
     .url-section input[type="text"] {
         width: 100%;
@@ -114,6 +109,7 @@
         border-radius: 4px;
         box-sizing: border-box;
         font-size: 1em;
+        margin-top: 10px;
     }
     .url-section input[type="text"]:focus {
         border-color: #80bdff;
@@ -225,8 +221,16 @@
 
         <div class="url-section">
             <strong>URL Веб-приложения</strong>
-            <p>Чтобы получить URL веб-приложения, следуйте <a href="https://developers.google.com/apps-script/guides/web#deploy_a_script_as_a_web_app" target="_blank">этой инструкции</a>. Скопируйте полученный URL и вставьте его в поле ниже.</p>
-            <input type="text" id="manualWebhookUrl" placeholder="Вставьте URL вашего веб-приложения сюда">
+            <p>
+              1. Откройте <a id="deploy-link" href="#" target="_blank">редактор скриптов вашего проекта</a>.<br>
+              2. В меню выберите <strong>Развертывание</strong> > <strong>Новое развертывание</strong>.<br>
+              3. В открывшемся окне нажмите на значок <strong>шестеренки (⚙️)</strong> и выберите <strong>Веб-приложение</strong>.<br>
+              4. В поле "Кто имеет доступ" установите значение <strong>"Все"</strong>.<br>
+              5. Нажмите кнопку <strong>"Развернуть"</strong>.<br>
+              6. Скопируйте <strong>URL веб-приложения</strong> из появившегося окна.<br>
+              7. Вставьте скопированный URL в поле ниже и нажмите "Установить / Обновить".
+            </p>
+            <input type="text" id="manualWebhookUrl" placeholder="https://script.google.com/macros/s/ваше_id/exec">
         </div>
 
         <div class="button-group">
@@ -255,6 +259,7 @@
     const rawTelegramData = document.getElementById('rawTelegramData');
     const devLinksSection = document.getElementById('dev-links-section');
     const gasEditorLink = document.getElementById('gas-editor-link');
+    const deployLink = document.getElementById('deploy-link');
     const manualWebhookUrlInput = document.getElementById('manualWebhookUrl');
     const setWebhookBtn = document.getElementById('setWebhookBtn');
     const deleteWebhookBtn = document.getElementById('deleteWebhookBtn');
@@ -305,7 +310,7 @@
         statusDetails.innerHTML = (analysis.details || 'Нет данных').replace(/\n/g, '<br>');
         statusSolution.innerHTML = (analysis.solution || 'Нет данных').replace(/\n/g, '<br>');
 
-        if (analysis.status !== 'OK') {
+        if (analysis.status !== 'OK' && basicInfo.editorUrl) {
             devLinksSection.classList.remove('hidden');
             gasEditorLink.href = basicInfo.editorUrl;
         }
@@ -329,13 +334,24 @@
             .withSuccessHandler(response => {
                 if (response.ok) {
                     basicInfo = response;
+                    
+                    if(basicInfo.editorUrl) {
+                      gasEditorLink.href = basicInfo.editorUrl;
+                      deployLink.href = basicInfo.editorUrl;
+                    }
+                    
                     rawTelegramData.textContent = JSON.stringify(response.rawInfo, null, 2);
                     deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
-                    statusPanel.classList.add('warning');
+                    
+                    if (response.rawInfo && response.rawInfo.url) {
+                      manualWebhookUrlInput.value = response.rawInfo.url;
+                    }
+
+                    statusPanel.className = 'status-panel warning';
                     statusIcon.textContent = '🤔';
                     statusSummary.textContent = 'Требуется анализ';
                     statusDetails.textContent = 'Базовая информация получена. Для получения рекомендаций запустите AI-анализ.';
-                    statusSolution.textContent = 'Нажмите кнопку \"Запустить AI-анализ\" ниже.';
+                    statusSolution.textContent = 'Нажмите кнопку "Запустить AI-анализ" ниже.';
                 } else {
                     handleFailure(new Error(response.error), 'Получение базовой информации');
                 }
@@ -352,7 +368,7 @@
                 if (response.ok) {
                     updateStatusPanel(response.analysis);
                 } else {
-                    updateStatusPanel(response.analysis); // Show warning from server
+                    updateStatusPanel(response.analysis);
                 }
                 hideLoader();
             })
@@ -369,7 +385,7 @@
                 } else {
                     showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
                 }
-                loadBasicInfo(); // Always reload basic info
+                loadBasicInfo();
             })
             .withFailureHandler(err => handleFailure(err, 'Действие с вебхуком'))
             [actionFunction](...args);
