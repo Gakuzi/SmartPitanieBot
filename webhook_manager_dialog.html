@@ -292,7 +292,7 @@
         devLinksSection.classList.add('hidden');
 
         if (!analysis) {
-            analysis = { status: 'CRITICAL', summary: 'Client-side Error', details: 'Could not process server response.', solution: 'Check execution logs and browser console.' };
+            analysis = { status: 'CRITICAL', summary: 'Критическая ошибка клиента', details: 'Не удалось обработать ответ от сервера.', solution: 'Проверьте логи выполнения и консоль браузера.' };
         }
 
         const statusMap = {
@@ -304,9 +304,9 @@
 
         statusPanel.classList.add(statusInfo.className);
         statusIcon.textContent = statusInfo.icon;
-        statusSummary.textContent = analysis.summary || 'No data';
-        statusDetails.innerHTML = (analysis.details || 'No data').replace(/\n/g, '<br>');
-        statusSolution.innerHTML = (analysis.solution || 'No data').replace(/\n/g, '<br>');
+        statusSummary.textContent = analysis.summary || 'Нет данных';
+        statusDetails.innerHTML = (analysis.details || 'Нет данных').replace(/\n/g, '<br>');
+        statusSolution.innerHTML = (analysis.solution || 'Нет данных').replace(/\n/g, '<br>');
 
         if (analysis.status !== 'OK') {
             devLinksSection.classList.remove('hidden');
@@ -317,40 +317,40 @@
     function handleFailure(error, context) {
         const errorAnalysis = {
             status: 'CRITICAL',
-            summary: `Critical Error: ${context}`,
-            details: `An unexpected error occurred: ${error.message}`,
-            solution: 'This is a developer-level error. Please use the tools below for debugging. Check the browser console (F12) for red errors.'
+            summary: `Критическая ошибка: ${context}`,
+            details: `Произошла непредвиденная ошибка: ${error.message}`,
+            solution: 'Эта ошибка для разработчика. Пожалуйста, используйте инструменты ниже для отладки. Проверьте консоль браузера (F12) на наличие красных ошибок.'
         };
         updateStatusPanel(errorAnalysis);
         hideLoader();
     }
 
     function loadBasicInfo() {
-        showLoader('Getting basic info from Telegram...');
+        showLoader('Получение базовой информации от Telegram...');
         showMessage('', 'hidden');
         google.script.run
             .withSuccessHandler(response => {
                 if (response.ok) {
                     basicInfo = response;
-                    autoWebAppUrlElem.textContent = response.webAppUrl || "Could not determine";
+                    autoWebAppUrlElem.textContent = response.webAppUrl || "Не удалось определить";
                     rawTelegramData.textContent = JSON.stringify(response.rawInfo, null, 2);
                     deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
                     statusPanel.classList.add('warning');
                     statusIcon.textContent = '🤔';
-                    statusSummary.textContent = 'Analysis Required';
-                    statusDetails.textContent = 'Basic information retrieved. For recommendations, run the AI analysis.';
-                    statusSolution.textContent = 'Click the \"Run AI Analysis\" button below.';
+                    statusSummary.textContent = 'Требуется анализ';
+                    statusDetails.textContent = 'Базовая информация получена. Для получения рекомендаций запустите AI-анализ.';
+                    statusSolution.textContent = 'Нажмите кнопку \"Запустить AI-анализ\" ниже.';
                 } else {
-                    handleFailure(new Error(response.error), 'Get Basic Info');
+                    handleFailure(new Error(response.error), 'Получение базовой информации');
                 }
                 hideLoader();
             })
-            .withFailureHandler(err => handleFailure(err, 'Get Basic Info'))
+            .withFailureHandler(err => handleFailure(err, 'Получение базовой информации'))
             .getBasicWebhookInfo();
     }
 
     function runAiAnalysis() {
-        showLoader('Running AI analysis... This may take up to 30 seconds.');
+        showLoader('Запуск AI-анализа... Это может занять до 30 секунд.');
         google.script.run
             .withSuccessHandler(response => {
                 if (response.ok) {
@@ -360,22 +360,22 @@
                 }
                 hideLoader();
             })
-            .withFailureHandler(err => handleFailure(err, 'AI Analysis'))
+            .withFailureHandler(err => handleFailure(err, 'AI-анализ'))
             .getAiAnalysis(basicInfo);
     }
 
     function handleAction(actionFunction, ...args) {
-        showLoader('Performing server operation...');
+        showLoader('Выполнение операции на сервере...');
         google.script.run
             .withSuccessHandler(result => {
                 if (result.ok) {
-                    showMessage('Operation successful! Reloading status...', 'success');
+                    showMessage('Операция успешно выполнена! Перезагружаю статус...', 'success');
                 } else {
-                    showMessage(`Error: ${result.description || 'Unknown server error.'}`, 'error');
+                    showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
                 }
                 loadBasicInfo(); // Always reload basic info
             })
-            .withFailureHandler(err => handleFailure(err, 'Webhook Action'))
+            .withFailureHandler(err => handleFailure(err, 'Действие с вебхуком'))
             [actionFunction](...args);
     }
 
@@ -384,7 +384,7 @@
       const manualUrl = manualWebhookUrlInput.value.trim();
       const finalUrl = manualUrl || basicInfo.webAppUrl;
       if (!finalUrl) {
-          showMessage('Webhook URL not found. Please enter it manually.', 'error');
+          showMessage('URL для установки не найден. Введите его вручную.', 'error');
           return;
       }
       handleAction('setWebhookFromDialog', finalUrl);
