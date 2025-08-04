@@ -21,12 +21,13 @@ function getWebhookStatusForDialog() {
 }
 
 /**
- * Устанавливает вебхук Telegram на URL текущего веб-приложения.
+ * Устанавливает вебхук Telegram.
  * Вызывается из HTML-диалога.
+ * @param {string} [url] - URL для установки вебхука. Если не указан, используется URL текущего веб-приложения.
  * @returns {object} Результат операции установки вебхука.
  */
-function setWebhookFromDialog() {
-  const webAppUrl = ScriptApp.getService().getUrl();
+function setWebhookFromDialog(url) {
+  const webAppUrl = url || ScriptApp.getService().getUrl();
   return setTelegramWebhook(webAppUrl); // Функция из 2_telegram_api.js
 }
 

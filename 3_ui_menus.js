@@ -15,6 +15,7 @@ function createCustomMenu() {
     .addSeparator()
     .addItem('🔑 Установить токен Telegram', 'setTelegramToken')
     .addItem('🔑 Установить ключ Gemini', 'setGeminiApiKey')
+    .addItem('📂 Настроить локальный путь', 'setLocalProjectPath')
     .addSeparator()
     .addItem('⚙️ Настроить инфраструктуру', 'setupProjectInfrastructure')
     .addToUi();
@@ -48,6 +49,7 @@ function getBasicWebhookInfo() {
   let webAppUrl = '';
   let webhookInfo = {};
   const editorUrl = `https://script.google.com/d/${ScriptApp.getScriptId()}/edit`;
+  const localPath = PropertiesService.getScriptProperties().getProperty('LOCAL_PROJECT_PATH');
 
   try {
     webAppUrl = ScriptApp.getService().getUrl();
@@ -59,6 +61,7 @@ function getBasicWebhookInfo() {
       ok: true,
       webAppUrl: webAppUrl,
       editorUrl: editorUrl,
+      localPath: localPath,
       rawInfo: webhookInfo.result || {},
     };
   } catch (e) {
@@ -67,6 +70,7 @@ function getBasicWebhookInfo() {
     return {
       ok: false,
       editorUrl: editorUrl,
+      localPath: localPath,
       error: errorMessage
     };
   }
@@ -167,6 +171,34 @@ function setGeminiApiKey() {
     } else {
       ui.alert('Ключ API не может быть пустым.');
       Logger.log('⚠️ Попытка сохранить пустой ключ Gemini API.');
+    }
+  }
+}
+
+/**
+ * Запрашивает и сохраняет локальный путь к проекту.
+ */
+function setLocalProjectPath() {
+  const ui = SpreadsheetApp.getUi();
+  const scriptProps = PropertiesService.getScriptProperties();
+  const currentPath = scriptProps.getProperty('LOCAL_PROJECT_PATH');
+
+  const response = ui.prompt(
+    'Настройка локального пути проекта',
+    `Введите абсолютный путь к папке вашего проекта на компьютере. (Текущий: ${currentPath || 'не задан'})`,
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() == ui.Button.OK) {
+    const path = response.getResponseText().trim();
+    if (path) {
+      scriptProps.setProperty('LOCAL_PROJECT_PATH', path);
+      ui.alert('Локальный путь к проекту успешно сохранен.');
+      Logger.log(`✅ Локальный путь сохранен: ${path}`);
+    } else {
+      scriptProps.deleteProperty('LOCAL_PROJECT_PATH');
+      ui.alert('Локальный путь удален.');
+      Logger.log('🗑️ Локальный путь удален.');
     }
   }
 }

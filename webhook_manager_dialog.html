@@ -382,8 +382,8 @@
     // --- Event Listeners ---
     setWebhookBtn.addEventListener('click', () => {
       const manualUrl = manualWebhookUrlInput.value.trim();
-      const finalUrl = manualUrl || basicInfo.webAppUrl;
-      if (!finalUrl) {
+      const finalUrl = manualUrl || autoWebAppUrlElem.textContent;
+      if (!finalUrl || finalUrl === 'Не удалось определить') {
           showMessage('URL для установки не найден. Введите его вручную.', 'error');
           return;
       }
