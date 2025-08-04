@@ -5,7 +5,7 @@ function showWebhookManagerDialog() {
   const htmlOutput = HtmlService.createHtmlOutputFromFile('webhook_manager_dialog')
       .setWidth(700)
       .setHeight(500)
-      .setSandboxMode(HtmlService.SandboxMode.DEFAULT);
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Управление вебхуком Telegram');
 }
 
