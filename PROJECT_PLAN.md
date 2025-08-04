@@ -79,3 +79,10 @@
 - [ ] Файл `PROJECT_PLAN.md` обновлён
 - [ ] **Код загружен на сервер Google (`clasp push`)**
 - [ ] GitHub синхронизирован
+
+---
+
+## 7. Разработчик
+
+*   **Имя:** Климов Евгений Александрович
+*   **GitHub:** [https://github.com/Gakuzi](https://github.com/Gakuzi)

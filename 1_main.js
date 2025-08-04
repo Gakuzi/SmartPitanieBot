@@ -56,20 +56,30 @@ function handleCallbackQuery(callbackQuery) {
 }
 
 // --- Обработка команд ---
-function handleCommand(chatId, msg, msgRaw) {
+function handleCommand(chatId, msg, msgRaw, messageData) {
   if (msg === '/start') {
     sendText(chatId, "DEBUG: /start command received.");
     onboardUser(chatId); // Создаем инфраструктуру, если ее нет
     sendText(chatId, "DEBUG: Onboarding complete.");
     
-    // Запускаем диалог с AI для знакомства
-    const prompt = "Ты — дружелюбный AI-диетолог в телеграм-боте \"СмартЕда\". Твоя задача — познакомиться с новым пользователем. Задай ему один-два приветственных вопроса, чтобы начать диалог. Например, спроси, как его зовут и какой у него опыт в подсчете калорий. Говори кратко и по делу.";
-    sendText(chatId, "DEBUG: Calling Gemini...");
+    const userFirstName = messageData.from.first_name || '';
+    const userLastName = messageData.from.last_name || '';
+    const userUsername = messageData.from.username || '';
+
+    let namePrompt = `Привет! Я твой персональный диетолог-помощник в боте СмартЕда.`;
+    if (userFirstName || userLastName || userUsername) {
+      namePrompt += ` Я вижу, что тебя зовут ${userFirstName} ${userLastName}. Твой никнейм в Telegram: @${userUsername}. Это верно? Или ты хочешь, чтобы я обращался к тебе по-другому?`;
+    } else {
+      namePrompt += ` Как тебя зовут?`;
+    }
+
+    const prompt = `Ты — дружелюбный AI-диетолог в телеграм-боте \"СмартЕда\". Твоя задача — познакомиться с новым пользователем и помочь ему настроить профиль. ${namePrompt} Ответь кратко и по делу.`;
+    sendText(chatId, "DEBUG: Calling Gemini for name confirmation...");
     const aiResponse = callGemini(prompt, chatId);
-    sendText(chatId, `DEBUG: Gemini response received: ${aiResponse}`);
+    sendText(chatId, `DEBUG: Gemini response received for name confirmation: ${aiResponse}`);
     
     if (aiResponse) {
-      startSession(chatId, 'awaiting_intro_response');
+      startSession(chatId, 'awaiting_name_confirmation', { telegramUser: messageData.from });
       sendText(chatId, aiResponse);
     } else {
       sendText(chatId, "Здравствуйте! Я ваш помощник по питанию. К сожалению, мой AI-модуль сейчас не в сети. Давайте пока воспользуемся стандартными функциями.", getMenu(chatId));
@@ -107,7 +117,27 @@ function handleCommand(chatId, msg, msgRaw) {
 
 // --- Сессии для пользовательского ввода ---
 function handleUserInput(chatId, input, session) {
+  Logger.log(`handleUserInput: Вызвана для chatId: ${chatId}, input: ${input}, awaitingInput: ${session.awaitingInput}`);
   switch (session.awaitingInput) {
+    case 'awaiting_name_confirmation':
+      const lowerInput = input.toLowerCase();
+      let userNameToSave;
+
+      if (lowerInput.includes('да') || lowerInput.includes('верно') || lowerInput.includes('yes')) {
+        // User confirmed the Telegram name
+        const telegramUser = session.data.telegramUser;
+        userNameToSave = telegramUser.first_name || telegramUser.username || 'Пользователь';
+        sendText(chatId, `Отлично, ${userNameToSave}!`);
+      } else {
+        // User provided a different name or wants to specify
+        userNameToSave = input;
+        sendText(chatId, `Хорошо, буду обращаться к тебе как ${userNameToSave}.`);
+      }
+      saveUserParam(chatId, 'name', userNameToSave); // Save the user's preferred name
+      updateSession(chatId, 'awaiting_weight', session.data); // Transition to awaiting weight
+      sendText(chatId, 'Теперь введите ваш вес в килограммах (например, 70):');
+      break;
+
     case 'awaiting_weight':
       if (isNaN(input) || input <= 0) {
         sendText(chatId, 'Неверный формат. Введите вес числом, например: 70');
