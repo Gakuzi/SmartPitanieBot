@@ -1,94 +1,113 @@
 /**
- * ЕДИНАЯ ТОЧКА ВХОДА ДЛЯ TELEGRAM
- * 
- * Эта функция является единственным обработчиком doPost для веб-приложения.
- * Она читает настройку DEBUG_MODE из ScriptProperties и в зависимости от нее
- * передает управление либо основной логике бота, либо эхо-тесту.
+ * @file doPost.js
+ * @description Единая точка входа для всех запросов от Telegram.
  */
-function doPost(e) {
-  const scriptProps = PropertiesService.getScriptProperties();
-  const debugMode = scriptProps.getProperty('DEBUG_MODE');
-
-  if (debugMode === 'true') {
-    handleEchoTest(e);
-  } else {
-    handleRequest(e);
-  }
-}
 
 /**
- * Обрабатывает входящий запрос в режиме ЭХО-ТЕСТА.
+ * Главная функция, обрабатывающая все входящие POST-запросы от Telegram.
+ * @param {object} e - Объект события от Google Apps Script.
  */
-function handleEchoTest(e) {
+function doPost(e) {
   try {
-    const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
-    
-    // Логируем часть токена для проверки, не раскрывая его целиком
-    if (telegramToken) {
-      const tokenPart = `${telegramToken.substring(0, 4)}...${telegramToken.slice(-4)}`;
-      Logger.log(`ECHO_TEST: Используется токен, начинающийся и заканчивающийся на: ${tokenPart}`);
-    } else {
-      Logger.log("ECHO_TEST: FATAL - TELEGRAM_TOKEN не найден в ScriptProperties!");
+    if (!e || !e.postData || !e.postData.contents) {
+      Logger.log("Пустой или некорректный запрос от Telegram.");
       return;
     }
 
     const data = JSON.parse(e.postData.contents);
-    const chatId = data.message.chat.id;
-    const text = data.message.text;
+    Logger.log(`Входящие данные: ${JSON.stringify(data)}`);
 
-    const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`;
-    const payload = { chat_id: String(chatId), text: `Эхо: ${text}` };
-    const options = { method: 'post', contentType: 'application/json', payload: JSON.stringify(payload) };
-
-    UrlFetchApp.fetch(url, options);
-
+    if (data.callback_query) {
+      handleCallbackQuery(data.callback_query);
+    } else if (data.message) {
+      handleMessage(data.message);
+    } else {
+      Logger.log("Неподдерживаемый тип данных.");
+    }
   } catch (err) {
-    Logger.log(`ECHO_TEST: CRITICAL - ${err.message}`);
+    Logger.log(`КРИТИЧЕСКАЯ ОШИБКА в doPost: ${err.message}\nСтек: ${err.stack}`);
+    // Попытка уведомить администратора, если это возможно
+    const adminChatId = PropertiesService.getScriptProperties().getProperty('ADMIN_CHAT_ID');
+    if (adminChatId) {
+      sendText(adminChatId, `Критическая ошибка в боте: ${err.message}`);
+    }
   }
 }
 
 /**
- * Обрабатывает входящий запрос в основном (боевом) режиме.
+ * Обрабатывает входящие сообщения.
+ * @param {object} message - Объект message от Telegram.
  */
-function handleRequest(e) {
-  let chatId, data;
-  try {
-    if (!e || !e.postData || !e.postData.contents) {
-      Logger.log("Пустой запрос от Telegram.");
-      return;
+function handleMessage(message) {
+  const chatId = message.chat.id;
+  const userName = message.from.first_name || 'Пользователь';
+  const text = message.text ? message.text.trim() : '';
+
+  // Получаем текущее состояние пользователя
+  const userState = getUserState(chatId);
+
+  // Если пользователь в процессе настройки, передаем управление диалоговому менеджеру
+  if (userState === STATES.AWAITING_SETUP) {
+    continueSetupDialog(chatId, userName, text);
+    return;
+  }
+
+  // Обработка команд
+  if (text.startsWith('/')) {
+    const command = text.split(' ')[0].toLowerCase();
+    switch (command) {
+      case '/start':
+      case '/setup':
+        startSetupDialog(chatId, userName);
+        break;
+      // Другие команды можно добавить здесь
+      // case '/meal': ...
+      default:
+        sendText(chatId, "Неизвестная команда. Используйте /setup для начала работы.");
+        break;
     }
-    data = JSON.parse(e.postData.contents);
+  } else {
+    // Обработка обычного текста, если пользователь не в каком-то особом состоянии
+    sendText(chatId, "Я вас не понимаю. Пожалуйста, используйте команду /setup, чтобы начать настройку вашего профиля.");
+  }
+}
 
-    if (data.callback_query) {
-      handleCallbackQuery(data.callback_query);
-      return;
+/**
+ * Обрабатывает нажатия на inline-кнопки.
+ * @param {object} callbackQuery - Объект callback_query от Telegram.
+ */
+function handleCallbackQuery(callbackQuery) {
+  const callbackQueryId = callbackQuery.id;
+  const chatId = callbackQuery.from.id;
+  const userName = callbackQuery.from.first_name || 'Пользователь';
+  const data = callbackQuery.data;
+  const messageId = callbackQuery.message.message_id;
+
+  // Отвечаем на запрос, чтобы убрать "часики" с кнопки
+  answerCallbackQuery(callbackQueryId);
+
+  // Получаем состояние пользователя
+  const userState = getUserState(chatId);
+
+  // Логика для отмены
+  if (data === 'cancel_setup') {
+    setUserState(chatId, STATES.IDLE); // Сбрасываем состояние
+    editMessageText(chatId, messageId, "Настройка отменена. Вы можете вернуться к ней в любой момент командой /setup.");
+    return;
+  }
+
+  // Если пользователь в процессе настройки, продолжаем диалог
+  if (userState === STATES.AWAITING_SETUP || data === 'start_setup') {
+    // Если это начало диалога, меняем состояние
+    if (data === 'start_setup') {
+        setUserState(chatId, STATES.AWAITING_SETUP);
     }
-
-    if (data.message && data.message.chat && data.message.text) {
-      chatId = data.message.chat.id;
-      Logger.log(`handleRequest: Получено сообщение от chatId: ${chatId}, текст: ${data.message.text}`);
-      const msgRaw = data.message.text.trim();
-      const msg = msgRaw.toLowerCase();
-      const session = getSession(chatId);
-
-      if (session && session.awaitingInput && isCommand(msg)) {
-        clearSession(chatId);
-        handleCommand(chatId, msg, msgRaw, data.message);
-      } else if (session && session.awaitingInput) {
-        handleUserInput(chatId, msgRaw, session);
-      } else {
-        handleCommand(chatId, msg, msgRaw, data.message);
-      }
-      return;
-    }
-
-    Logger.log("Неподдерживаемый тип запроса: " + e.postData.contents);
-
-  } catch (err) {
-    chatId = (data && data.message) ? data.message.chat.id : (data && data.callback_query) ? data.callback_query.from.id : null;
-    if (chatId) {
-      sendText(chatId, `--- КРИТИЧЕСКАЯ ОШИБКА ---\nСообщение: ${err.message}\nСтек: ${err.stack}`);
-    }
-    Logger.log(`Критическая ошибка в doPost: ${err.message} ${err.stack}`);
+    // Удаляем старое сообщение с кнопками, чтобы избежать путаницы
+    editMessageText(chatId, messageId, `Отлично, продолжаем...`);
+    continueSetupDialog(chatId, userName, data);
+  } else {
+    // Обработка других callback'ов, если они появятся в будущем
+    Logger.log(`Получен callback "${data}" от пользователя ${chatId} вне состояния настройки.`);
+    editMessageText(chatId, messageId, "Произошла ошибка состояния. Пожалуйста, начните заново с команды /setup.");
   }
 }

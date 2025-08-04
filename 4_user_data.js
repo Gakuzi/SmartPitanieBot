@@ -1,10 +1,45 @@
+/**
+ * @file 4_user_data.js
+ * @description Управление данными и состоянием пользователей.
+ */
+
+// --- Константы состояний пользователя ---
+const STATES = {
+  IDLE: 'idle', // Обычное состояние, бот ждет команд
+  AWAITING_SETUP: 'awaiting_setup', // Пользователь в процессе настройки профиля
+  // Можно добавлять другие состояния, например, AWAITING_MEAL_PHOTO
+};
+
+// --- Управление состоянием пользователя ---
+
+/**
+ * Устанавливает текущее состояние для пользователя.
+ * @param {string|number} chatId - ID чата.
+ * @param {string} state - Состояние из констант STATES.
+ */
+function setUserState(chatId, state) {
+  const userProps = PropertiesService.getUserProperties();
+  userProps.setProperty(`state_${chatId}`, state);
+}
+
+/**
+ * Получает текущее состояние пользователя.
+ * @param {string|number} chatId - ID чата.
+ * @returns {string} - Текущее состояние (по умолчанию STATES.IDLE).
+ */
+function getUserState(chatId) {
+  const userProps = PropertiesService.getUserProperties();
+  return userProps.getProperty(`state_${chatId}`) || STATES.IDLE;
+}
+
+
 // --- Сохранение и получение данных пользователя ---
 function saveUserParam(chatId, key, value) {
   const userProps = PropertiesService.getUserProperties();
   let userData = getUserData(chatId);
   userData[key] = value;
   userProps.setProperty('user_' + chatId, JSON.stringify(userData));
-  addUser(chatId);
+  addUser(chatId); // Убедимся, что пользователь зарегистрирован
   return userData; // Возвращаем обновленные данные
 }
 
@@ -14,6 +49,7 @@ function getUserData(chatId) {
   try {
     return data ? JSON.parse(data) : {};
   } catch (e) {
+    Logger.log(`Ошибка парсинга JSON для пользователя ${chatId}: ${e.message}. Данные: ${data}`);
     return {};
   }
 }
@@ -22,7 +58,12 @@ function getUserData(chatId) {
 function getAllUsers() {
   const scriptProps = PropertiesService.getScriptProperties();
   const usersJson = scriptProps.getProperty('all_users') || '[]';
-  return JSON.parse(usersJson);
+  try {
+    return JSON.parse(usersJson);
+  } catch (e) {
+    Logger.log(`Ошибка парсинга JSON all_users: ${e.message}. Данные: ${usersJson}`);
+    return [];
+  }
 }
 
 function addUser(chatId) {
@@ -34,44 +75,13 @@ function addUser(chatId) {
   }
 }
 
-// --- Сессии для пользовательского ввода ---
-function getSession(chatId) {
-  const userProps = PropertiesService.getUserProperties();
-  let s = userProps.getProperty('session_' + chatId);
-  if (s) {
-    try {
-      return JSON.parse(s);
-    } catch (e) {
-      clearSession(chatId);
-      return {};
-    }
-  }
-  return {};
-}
-
-function startSession(chatId, awaitingInput, data = {}) {
-  const userProps = PropertiesService.getUserProperties();
-  const session = { awaitingInput, data };
-  userProps.setProperty('session_' + chatId, JSON.stringify(session));
-  return session;
-}
-
-function updateSession(chatId, awaitingInput, data) {
-  return startSession(chatId, awaitingInput, data); // Просто перезаписываем сессию с новыми данными
-}
-
-function clearSession(chatId) {
-  const userProps = PropertiesService.getUserProperties();
-  userProps.deleteProperty('session_' + chatId);
-}
-
 // --- Онбординг и создание инфраструктуры для нового пользователя ---
 function onboardUser(chatId) {
-  const userProps = PropertiesService.getUserProperties();
   const userData = getUserData(chatId);
 
   // Если у пользователя уже есть таблица, ничего не делаем
   if (userData.sheetId) {
+    Logger.log(`Пользователь ${chatId} уже имеет инфраструктуру.`);
     return;
   }
 
@@ -81,14 +91,14 @@ function onboardUser(chatId) {
     const templateSheetId = scriptProps.getProperty('TEMPLATE_SHEET_ID');
 
     if (!rootFolderId || !templateSheetId) {
-      throw new Error("Ключевые ID инфраструктуры не найдены. Запустите setupProjectInfrastructure().");
+      throw new Error("Ключевые ID инфраструктуры (ROOT_FOLDER_ID или TEMPLATE_SHEET_ID) не найдены. Запустите setupProjectInfrastructure() из 0_setup.js.");
     }
 
     const rootFolder = DriveApp.getFolderById(rootFolderId);
     const templateFile = DriveApp.getFileById(templateSheetId);
 
     // 1. Создаем персональную папку
-    const userFolder = rootFolder.createFolder(String(chatId));
+    const userFolder = rootFolder.createFolder(`User_${String(chatId)}`);
     
     // 2. Копируем шаблонную таблицу в папку пользователя
     const userSheet = templateFile.makeCopy(`SmartPit_Sheet_${chatId}`, userFolder);

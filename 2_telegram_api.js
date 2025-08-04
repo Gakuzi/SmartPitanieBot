@@ -1,4 +1,11 @@
 // --- Функции отправки сообщений ---
+
+/**
+ * Отправляет текстовое сообщение с опциональной клавиатурой.
+ * @param {string|number} chatId - ID чата.
+ * @param {string} text - Текст сообщения.
+ * @param {object} [keyboard=null] - Объект клавиатуры (reply_markup).
+ */
 function sendText(chatId, text, keyboard = null) {
   const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
   if (!telegramToken) {
@@ -13,13 +20,19 @@ function sendText(chatId, text, keyboard = null) {
     parse_mode: 'Markdown',
     disable_web_page_preview: true,
   };
-  if (keyboard) payload.reply_markup = JSON.stringify(keyboard);
+
+  // Добавляем клавиатуру, если она передана
+  if (keyboard) {
+    payload.reply_markup = JSON.stringify(keyboard);
+  }
+
   const options = {
     method: 'post',
     contentType: 'application/json',
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   };
+
   try {
     const response = UrlFetchApp.fetch(url, options);
     if (response.getResponseCode() !== 200) {
@@ -29,6 +42,34 @@ function sendText(chatId, text, keyboard = null) {
     Logger.log(`CRITICAL ERROR sending message to ${chatId}: ${e.message}`);
   }
 }
+
+/**
+ * Отправляет форматированное сообщение, полученное от Gemini.
+ * @param {string|number} chatId - ID чата.
+ * @param {{text: string, buttons: Array<{text: string, callback_data: string}>}} geminiResponse - Ответ от Gemini.
+ */
+function sendFormattedText(chatId, geminiResponse) {
+  if (!geminiResponse || !geminiResponse.text) {
+    Logger.log(`ERROR: Пустой ответ от Gemini для чата ${chatId}`);
+    sendText(chatId, "Произошла внутренняя ошибка. Попробуйте еще раз позже.");
+    return;
+  }
+
+  let keyboard = null;
+  if (geminiResponse.buttons && geminiResponse.buttons.length > 0) {
+    // Группируем кнопки по 2 в ряд для лучшего отображения
+    const rows = [];
+    for (let i = 0; i < geminiResponse.buttons.length; i += 2) {
+        rows.push(geminiResponse.buttons.slice(i, i + 2));
+    }
+    keyboard = {
+      inline_keyboard: rows
+    };
+  }
+
+  sendText(chatId, geminiResponse.text, keyboard);
+}
+
 
 function editMessageText(chatId, messageId, text) {
   const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
