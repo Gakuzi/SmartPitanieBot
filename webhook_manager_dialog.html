@@ -318,6 +318,13 @@
             rawTelegramData.textContent = analysis.rawTelegramData;
             rawDataSection.classList.remove('hidden');
         }
+
+        // Show dev links if status is not OK
+        if (analysis.status !== 'OK') {
+            devLinksSection.classList.remove('hidden');
+            gasEditorLink.href = editorUrl;
+            vscodeLink.href = `vscode://file/${editorUrl}`;
+        }
     }
 
     function handleTimeout() {
@@ -371,9 +378,6 @@
                     solution: 'Эта ошибка для разработчика. Пожалуйста, используйте инструменты ниже для отладки.'
                 };
                 updateStatusPanel(errorAnalysis);
-                devLinksSection.classList.remove('hidden');
-                gasEditorLink.href = editorUrl;
-                vscodeLink.href = `vscode://file/${editorUrl}`;
             }
         }
         hideLoader();
