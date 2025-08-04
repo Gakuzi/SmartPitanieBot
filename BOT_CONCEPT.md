@@ -118,3 +118,19 @@
 3.  **Хранилище данных:** Google Таблицы (требуется настройка через Apps Script).
 4.  **Вариативность планов:** Определить, будет ли бот предлагать разные типы планов (бюджетный, быстрый, на массу).
 5.  **Модель пользователя:** Описание структуры профиля, где хранятся параметры, история и предпочтения.
+{
+  "timeZone": "Europe/Moscow",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "webapp": {
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE_ANONYMOUS"
+  },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/script.container.ui",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/script.external_request"
+  ]
+}

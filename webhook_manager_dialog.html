@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+      color: #343a40;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      color: #007bff;
+      text-align: center;
+      margin-bottom: 25px;
+      font-weight: 500;
+    }
+    .status-section {
+      background-color: #e9ecef;
+      border-left: 4px solid #007bff;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      line-height: 1.6;
+    }
+    .status-section strong {
+      color: #0056b3;
+    }
+    .status-section pre {
+      white-space: pre-wrap;
+      word-break: break-all;
+      background-color: #f1f3f5;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      font-size: 0.85em;
+    }
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 25px;
+    }
+    .btn {
+      padding: 10px 25px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #0056b3;
+      transform: translateY(-1px);
+    }
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
+    }
+    .btn-danger:hover {
+      background-color: #c82333;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background-color: #5a6268;
+      transform: translateY(-1px);
+    }
+    .progress-bar-container {
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      margin-top: 20px;
+      overflow: hidden;
+      height: 10px;
+      display: none; /* Hidden by default */
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #28a745;
+      border-radius: 5px;
+      transition: width 0.5s ease;
+    }
+    .message {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: bold;
+    }
+    .message.success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .message.error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Управление вебхуком Telegram</h2>
+
+    <div class="status-section">
+      <strong>Текущий статус вебхука:</strong>
+      <pre id="webhookStatus"></pre>
+      <div id="currentWebAppUrl"></div>
+    </div>
+
+    <div class="button-group" id="actionButtons">
+      <button class="btn btn-primary" id="setWebhookBtn">Установить / Обновить вебхук</button>
+      <button class="btn btn-danger hidden" id="deleteWebhookBtn">Удалить вебхук</button>
+      <button class="btn btn-secondary" id="closeDialogBtn">Закрыть</button>
+    </div>
+
+    <div class="progress-bar-container" id="progressBarContainer">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="message hidden" id="dialogMessage"></div>
+  </div>
+
+  <script>
+    const webhookStatusElem = document.getElementById('webhookStatus');
+    const currentWebAppUrlElem = document.getElementById('currentWebAppUrl');
+    const setWebhookBtn = document.getElementById('setWebhookBtn');
+    const deleteWebhookBtn = document.getElementById('deleteWebhookBtn');
+    const closeDialogBtn = document.getElementById('closeDialogBtn');
+    const progressBarContainer = document.getElementById('progressBarContainer');
+    const progressBar = document.getElementById('progressBar');
+    const dialogMessage = document.getElementById('dialogMessage');
+
+    function showMessage(msg, type) {
+      dialogMessage.textContent = msg;
+      dialogMessage.className = `message ${type}`;
+      dialogMessage.classList.remove('hidden');
+    }
+
+    function hideMessage() {
+      dialogMessage.classList.add('hidden');
+    }
+
+    function showProgressBar() {
+      progressBarContainer.style.display = 'block';
+      progressBar.style.width = '0%';
+    }
+
+    function updateProgressBar(progress) {
+      progressBar.style.width = `${progress}%`;
+    }
+
+    function hideProgressBar() {
+      progressBarContainer.style.display = 'none';
+    }
+
+    function loadWebhookInfo() {
+      showProgressBar();
+      hideMessage();
+      updateProgressBar(20);
+      google.script.run
+        .withSuccessHandler(function(info) {
+          updateProgressBar(70);
+          let statusText = '';
+          if (info.result && info.result.url) {
+            statusText += `URL: ${info.result.url}\n`;
+            statusText += `Последняя ошибка: ${info.result.last_error_message || 'Нет'}\n`;
+            statusText += `Ожидающие обновления: ${info.result.pending_update_count}\n`;
+            statusText += `Сертификат: ${info.result.has_custom_certificate ? 'Есть' : 'Нет'}\n`;
+            statusText += `Макс. соединения: ${info.result.max_connections || 'Не указано'}\n`;
+            statusText += `Разрешенные обновления: ${info.result.allowed_updates ? info.result.allowed_updates.join(', ') : 'Все'}\n`;
+            deleteWebhookBtn.classList.remove('hidden');
+            setWebhookBtn.textContent = 'Обновить вебхук';
+          } else {
+            statusText += `Вебхук не установлен.\n`;
+            deleteWebhookBtn.classList.add('hidden');
+            setWebhookBtn.textContent = 'Установить вебхук';
+          }
+          webhookStatusElem.textContent = statusText;
+          currentWebAppUrlElem.textContent = `URL текущего веб-приложения: ${info.webAppUrl}`;
+          updateProgressBar(100);
+          hideProgressBar();
+        })
+        .withFailureHandler(function(error) {
+          hideProgressBar();
+          showMessage(`Ошибка загрузки статуса вебхука: ${error.message}`, 'error');
+          webhookStatusElem.textContent = 'Не удалось загрузить статус.';
+          deleteWebhookBtn.classList.add('hidden');
+          setWebhookBtn.textContent = 'Установить вебхук';
+        })
+        .getWebhookStatusForDialog();
+    }
+
+    setWebhookBtn.addEventListener('click', function() {
+      showProgressBar();
+      hideMessage();
+      updateProgressBar(20);
+      google.script.run
+        .withSuccessHandler(function(result) {
+          updateProgressBar(70);
+          if (result.ok) {
+            showMessage('Вебхук успешно установлен/обновлен.', 'success');
+          } else {
+            showMessage(`Ошибка установки/обновления вебхука: ${result.description || 'Неизвестная ошибка'}`, 'error');
+          }
+          loadWebhookInfo(); // Reload status after action
+        })
+        .withFailureHandler(function(error) {
+          hideProgressBar();
+          showMessage(`Произошла ошибка: ${error.message}`, 'error');
+        })
+        .setWebhookFromDialog(); // Call server-side function
+    });
+
+    deleteWebhookBtn.addEventListener('click', function() {
+      showProgressBar();
+      hideMessage();
+      updateProgressBar(20);
+      google.script.run
+        .withSuccessHandler(function(result) {
+          updateProgressBar(70);
+          if (result.ok) {
+            showMessage('Вебхук успешно удален.', 'success');
+          } else {
+            showMessage(`Ошибка удаления вебхука: ${result.description || 'Неизвестная ошибка'}`, 'error');
+          }
+          loadWebhookInfo(); // Reload status after action
+        })
+        .withFailureHandler(function(error) {
+          hideProgressBar();
+          showMessage(`Произошла ошибка: ${error.message}`, 'error');
+        })
+        .deleteWebhookFromDialog(); // Call server-side function
+    });
+
+    closeDialogBtn.addEventListener('click', function() {
+      google.script.host.close();
+    });
+
+    // Load info when dialog opens
+    document.addEventListener('DOMContentLoaded', loadWebhookInfo);
+  </script>
+</body>
+</html>
