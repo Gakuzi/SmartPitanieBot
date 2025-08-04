@@ -62,6 +62,7 @@ function handleCommand(chatId, msg, msgRaw, messageData) {
     onboardUser(chatId, messageData.from); // Создаем инфраструктуру, если ее нет
     const userFirstName = messageData.from.first_name || messageData.from.username || 'пользователь';
     startSetupDialog(chatId, userFirstName); // Запускаем диалог знакомства
+    sendMenu(chatId); // Отправляем основное меню
     return;
   }
 
