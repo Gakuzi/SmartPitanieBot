@@ -3,27 +3,43 @@
  * @description Управление UI, меню и диалогами в Google Sheets и Telegram.
  */
 
-// --- Меню в Google Sheets ---
+// --- Боковая панель администратора в Google Sheets ---
 
 /**
- * Создает кастомное меню в интерфейсе Google Sheets.
+ * Показывает боковую панель администратора.
  */
-function createCustomMenu() {
-  const ui = SpreadsheetApp.getUi();
-  const adminMenu = ui.createMenu('Администрирование');
+function showAdminPanel() {
+  const html = HtmlService.createHtmlOutputFromFile('AdminPanel');
+  SpreadsheetApp.getUi().showSidebar(html);
+}
 
-  adminMenu.addItem('Настроить таблицу', 'setupAdminSheet');
-  adminMenu.addItem('Управление вебхуком', 'showWebhookManagerDialog');
-  adminMenu.addSeparator();
-  adminMenu.addItem('Снять/Установить защиту листов', 'toggleSheetProtection');
-  adminMenu.addSeparator();
-
-  const settingsSubMenu = ui.createMenu('Настройки')
-      .addItem('Установить токен Telegram', 'setTelegramToken')
-      .addItem('Установить ключ Gemini', 'setGeminiApiKey');
-      
-  adminMenu.addSubMenu(settingsSubMenu);
-  adminMenu.addToUi();
+/**
+ * Обрабатывает действия, вызванные из боковой панели администратора.
+ * @param {string} actionName - Имя действия, которое нужно выполнить.
+ */
+function runAdminAction(actionName) {
+  switch (actionName) {
+    case 'setup':
+      setupAdminSheet();
+      break;
+    case 'webhook':
+      showWebhookManagerDialog();
+      break;
+    case 'clear':
+      clearCurrentSheet(); // Предполагается, что эта функция будет создана
+      break;
+    case 'toggleProtection':
+      toggleSheetProtection();
+      break;
+    case 'setTelegramToken':
+      setTelegramToken();
+      break;
+    case 'setGeminiApiKey':
+      setGeminiApiKey();
+      break;
+    default:
+      SpreadsheetApp.getUi().alert('Неизвестное действие: ' + actionName);
+  }
 }
 
 // --- Диалоговые окна в Google Sheets ---
@@ -93,6 +109,7 @@ function getBasicWebhookInfo() {
     };
   }
 }
+
 
 /**
  * Запускает анализ статуса вебхука с помощью AI.
@@ -324,5 +341,27 @@ function setGeminiApiKey() {
     } else {
       ui.alert('Ключ API не может быть пустым.');
     }
+  }
+}
+
+/**
+ * Очищает текущий активный лист.
+ */
+function clearCurrentSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getActiveSheet();
+  const ui = SpreadsheetApp.getUi();
+
+  const response = ui.alert(
+    'Очистка листа',
+    `Вы уверены, что хотите полностью очистить лист "${sheet.getName()}"? Это действие необратимо.`,
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response == ui.Button.YES) {
+    sheet.clear();
+    ui.alert('Лист успешно очищен.');
+  } else {
+    ui.alert('Очистка отменена.');
   }
 }

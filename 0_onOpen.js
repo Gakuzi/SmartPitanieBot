@@ -7,5 +7,5 @@
  * Создает кастомное меню в интерфейсе Google Sheets при открытии документа.
  */
 function onOpen() {
-  createCustomMenu();
+  showAdminPanel();
 }
