@@ -139,6 +139,8 @@ function continueSetupDialog(chatId, userName, userMessage) {
     setUserState(chatId, STATES.IDLE);
     // Запускаем расчет КБЖУ
     triggerNutritionCalculation(chatId, userData);
+    // Генерируем меню
+    generateMenu(chatId);
   }
 }
 
@@ -163,4 +165,72 @@ function findLastQuestion(userData) {
 function isProfileComplete(userData) {
     const requiredParams = ['gender', 'age', 'height', 'weight', 'goal', 'activityLevel'];
     return requiredParams.every(param => userData.hasOwnProperty(param) && userData[param] !== null);
+}
+
+/**
+ * Генерирует меню на день с помощью AI.
+ * @param {string|number} chatId - ID чата.
+ */
+function generateMenu(chatId) {
+  const userData = getUserData(chatId);
+
+  if (!isProfileComplete(userData) || !userData.calories) {
+    sendText(chatId, "Пожалуйста, сначала полностью завершите настройку вашего профиля, чтобы я мог рассчитать КБЖУ и создать меню.");
+    return;
+  }
+
+  sendText(chatId, "🤖 Создаю для вас персональное меню... Это может занять до минуты.");
+
+  const prompt = generateMenuPrompt(userData);
+  const menuResponse = callGemini(prompt);
+
+  if (menuResponse.error) {
+    sendText(chatId, `Произошла ошибка при создании меню: ${menuResponse.error}. Попробуйте позже.`);
+    Logger.log(`❌ Ошибка генерации меню для ${chatId}: ${menuResponse.details}`);
+    return;
+  }
+
+  // Сохраняем меню в данных пользователя
+  saveUserParam(chatId, 'todayMenu', menuResponse);
+
+  // Форматируем и отправляем меню пользователю
+  const formattedMenu = formatMenuForDisplay(menuResponse);
+  sendText(chatId, formattedMenu);
+  
+  // Предлагаем дальнейшие действия
+  const buttons = [
+    [{ text: "🛒 Список покупок", callback_data: "get_shopping_list" }],
+    [{ text: "🔄 Запросить замену", callback_data: "request_menu_change" }]
+  ];
+  sendText(chatId, "Что делаем дальше?", { inline_keyboard: buttons });
+}
+
+/**
+ * Форматирует JSON-объект меню в читаемый текст для Telegram.
+ * @param {object} menu - JSON-объект меню.
+ * @returns {string} - Отформатированное строковое представление меню.
+ */
+function formatMenuForDisplay(menu) {
+  if (!menu || !menu.meals) return "Ошибка: не удалось отобразить меню.";
+
+  let message = `*Ваше меню на день:*
+
+`;
+  message += `*КБЖУ: ${menu.summary.total_calories} ккал, Б:${menu.summary.total_proteins}г, Ж:${menu.summary.total_fats}г, У:${menu.summary.total_carbs}г*
+
+`;
+
+  menu.meals.forEach(meal => {
+    message += `*${meal.name}: ${meal.recipe_name}*
+`;
+    message += `_${meal.description}_
+`;
+    message += `(КБЖУ: ${meal.calories} ккал, Б:${meal.proteins}г, Ж:${meal.fats}г, У:${meal.carbs}г)
+
+`;
+  });
+
+  message += `Чтобы посмотреть рецепты, нажмите "👨‍🍳 Что готовим?".`;
+
+  return message;
 }
