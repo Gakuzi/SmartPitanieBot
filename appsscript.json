@@ -1,9 +1,12 @@
 {
   "timeZone": "Europe/Moscow",
-  "dependencies": {
-  },
+  "dependencies": {},
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
+  "webapp": {
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE"
+  },
   "oauthScopes": [
     "https://www.googleapis.com/auth/script.scriptapp",
     "https://www.googleapis.com/auth/spreadsheets",
@@ -12,7 +15,19 @@
     "https://www.googleapis.com/auth/script.container.ui",
     "https://www.googleapis.com/auth/script.external_request"
   ],
-  "executionApi": {
-    "access": "ANYONE"
-  }
+  "fileOrder": [
+    "config.js",
+    "7_utils.js",
+    "2_telegram_api.js",
+    "6_sheets_api.js",
+    "8_gemini_api.js",
+    "4_user_data.js",
+    "5_nutrition_ai.js",
+    "9_manual_mode.js",
+    "3_ui_menus.js",
+    "1_main.js",
+    "doPost.js",
+    "0_onOpen.js",
+    "0_setup.js"
+  ]
 }
