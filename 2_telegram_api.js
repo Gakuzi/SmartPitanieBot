@@ -1,3 +1,8 @@
+/**
+ * @file 2_telegram_api.js
+ * @description Низкоуровневые функции для взаимодействия с Telegram Bot API.
+ */
+
 // --- Функции отправки сообщений ---
 
 /**
@@ -9,7 +14,7 @@
 function sendText(chatId, text, keyboard = null) {
   const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
   if (!telegramToken) {
-    Logger.log("FATAL: TELEGRAM_TOKEN не найден в ScriptProperties!");
+    Logger.log("❌ КРИТИЧЕСКАЯ ОШИБКА: TELEGRAM_TOKEN не найден в ScriptProperties!");
     return;
   }
 
@@ -21,7 +26,6 @@ function sendText(chatId, text, keyboard = null) {
     disable_web_page_preview: true,
   };
 
-  // Добавляем клавиатуру, если она передана
   if (keyboard) {
     payload.reply_markup = JSON.stringify(keyboard);
   }
@@ -35,11 +39,12 @@ function sendText(chatId, text, keyboard = null) {
 
   try {
     const response = UrlFetchApp.fetch(url, options);
-    if (response.getResponseCode() !== 200) {
-      Logger.log(`ERROR sending message to ${chatId}. Response: ${response.getContentText()}`);
+    const responseCode = response.getResponseCode();
+    if (responseCode !== 200) {
+      Logger.log(`❌ ОШИБКА отправки сообщения в чат ${chatId}. Статус: ${responseCode}. Ответ: ${response.getContentText()}`);
     }
   } catch (e) {
-    Logger.log(`CRITICAL ERROR sending message to ${chatId}: ${e.message}`);
+    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при отправке сообщения в чат ${chatId}: ${e.message}\nStack: ${e.stack || 'N/A'}`);
   }
 }
 
@@ -50,14 +55,13 @@ function sendText(chatId, text, keyboard = null) {
  */
 function sendFormattedText(chatId, geminiResponse) {
   if (!geminiResponse || !geminiResponse.text) {
-    Logger.log(`ERROR: Пустой ответ от Gemini для чата ${chatId}`);
-    sendText(chatId, "Произошла внутренняя ошибка. Попробуйте еще раз позже.");
+    Logger.log(`⚠️ ПРЕДУПРЕЖДЕНИЕ: Пустой или некорректный ответ от Gemini для чата ${chatId}. Ответ: ${JSON.stringify(geminiResponse)}`);
+    sendText(chatId, "Произошла внутренняя ошибка AI. Попробуйте еще раз позже.");
     return;
   }
 
   let keyboard = null;
   if (geminiResponse.buttons && geminiResponse.buttons.length > 0) {
-    // Группируем кнопки по 2 в ряд для лучшего отображения
     const rows = [];
     for (let i = 0; i < geminiResponse.buttons.length; i += 2) {
         rows.push(geminiResponse.buttons.slice(i, i + 2));
@@ -73,7 +77,10 @@ function sendFormattedText(chatId, geminiResponse) {
 
 function editMessageText(chatId, messageId, text) {
   const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
-  if (!telegramToken) return;
+  if (!telegramToken) {
+    Logger.log("❌ КРИТИЧЕСКАЯ ОШИБКА: TELEGRAM_TOKEN не найден в ScriptProperties!");
+    return;
+  }
 
   const url = `https://api.telegram.org/bot${telegramToken}/editMessageText`;
   const payload = {
@@ -86,45 +93,35 @@ function editMessageText(chatId, messageId, text) {
     method: 'post',
     contentType: 'application/json',
     payload: JSON.stringify(payload),
+    muteHttpExceptions: true
   };
   try {
-    UrlFetchApp.fetch(url, options);
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+    if (responseCode !== 200) {
+        Logger.log(`❌ ОШИБКА редактирования сообщения ${messageId} для ${chatId}. Статус: ${responseCode}. Ответ: ${response.getContentText()}`);
+    }
   } catch (e) {
-    Logger.log(`ERROR editing message ${messageId} for ${chatId}: ${e.message}`);
+    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при редактировании сообщения ${messageId} для ${chatId}: ${e.message}\nStack: ${e.stack || 'N/A'}`);
   }
 }
 
 function answerCallbackQuery(callbackQueryId) {
   const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
-  if (!telegramToken) return;
+  if (!telegramToken) {
+      Logger.log("❌ КРИТИЧЕСКАЯ ОШИБКА: TELEGRAM_TOKEN не найден в ScriptProperties!");
+      return;
+  }
   
   const url = `https://api.telegram.org/bot${telegramToken}/answerCallbackQuery`;
-  UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', payload: JSON.stringify({ callback_query_id: callbackQueryId }) });
-}
-
-/**
- * Отправляет тестовое сообщение администратору из Google Sheet.
- * Эту функцию нужно привязать к кнопкам в листе "Тест отправки".
- * @param {string} messageText - Текст сообщения для отправки.
- */
-function sendTestMessage(messageText) {
-  const scriptProps = PropertiesService.getScriptProperties();
-  const adminChatId = scriptProps.getProperty('ADMIN_CHAT_ID');
-  
-  if (!adminChatId) {
-    Logger.log("TEST_MESSAGE: ADMIN_CHAT_ID не найден в ScriptProperties. Невозможно отправить тестовое сообщение.");
-    SpreadsheetApp.getUi().alert('Ошибка', 'ADMIN_CHAT_ID не найден в ScriptProperties. Проверьте настройки.', SpreadsheetApp.getUi().ButtonSet.OK);
-    return;
-  }
-
   try {
-    sendText(adminChatId, `Тестовое сообщение из таблицы: ${messageText}`);
-    SpreadsheetApp.getUi().alert('Успех', 'Тестовое сообщение отправлено администратору.', SpreadsheetApp.getUi().ButtonSet.OK);
-  } catch (e) {
-    Logger.log(`TEST_MESSAGE: Ошибка при отправке тестового сообщения: ${e.message}`);
-    SpreadsheetApp.getUi().alert('Ошибка', `Не удалось отправить тестовое сообщение: ${e.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+      UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', payload: JSON.stringify({ callback_query_id: callbackQueryId }), muteHttpExceptions: true });
+  } catch(e) {
+      Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при ответе на callback_query ${callbackQueryId}: ${e.message}\nStack: ${e.stack || 'N/A'}`);
   }
 }
+
+// --- Функции управления вебхуком ---
 
 /**
  * Устанавливает вебхук Telegram на указанный URL.
@@ -132,19 +129,24 @@ function sendTestMessage(messageText) {
  * @returns {object} - Результат операции.
  */
 function setTelegramWebhook(url) {
-  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
-  if (!telegramToken) {
-    return { ok: false, description: "TELEGRAM_TOKEN не найден в ScriptProperties!" };
-  }
-
-  const apiUrl = `https://api.telegram.org/bot${telegramToken}/setWebhook?url=${encodeURIComponent(url)}`;
   try {
-    const response = UrlFetchApp.fetch(apiUrl);
+    const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+    if (!telegramToken) {
+      throw new Error("TELEGRAM_TOKEN не найден в ScriptProperties!");
+    }
+
+    const apiUrl = `https://api.telegram.org/bot${telegramToken}/setWebhook?url=${encodeURIComponent(url)}`;
+    const response = UrlFetchApp.fetch(apiUrl, {muteHttpExceptions: true});
     const result = JSON.parse(response.getContentText());
-    Logger.log(`setWebhook response: ${JSON.stringify(result)}`);
+    
+    if (result.ok) {
+        Logger.log(`✅ Вебхук успешно установлен: ${JSON.stringify(result)}`);
+    } else {
+        Logger.log(`❌ ОШИБКА установки вебхука: ${JSON.stringify(result)}`);
+    }
     return result;
   } catch (e) {
-    Logger.log(`Ошибка при установке вебхука: ${e.message}`);
+    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при установке вебхука: ${e.message}\nStack: ${e.stack || 'N/A'}`);
     return { ok: false, description: e.message };
   }
 }
@@ -154,19 +156,24 @@ function setTelegramWebhook(url) {
  * @returns {object} - Результат операции.
  */
 function deleteTelegramWebhook() {
-  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
-  if (!telegramToken) {
-    return { ok: false, description: "TELEGRAM_TOKEN не найден в ScriptProperties!" };
-  }
-
-  const apiUrl = `https://api.telegram.org/bot${telegramToken}/deleteWebhook`;
   try {
-    const response = UrlFetchApp.fetch(apiUrl);
+    const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+    if (!telegramToken) {
+      throw new Error("TELEGRAM_TOKEN не найден в ScriptProperties!");
+    }
+
+    const apiUrl = `https://api.telegram.org/bot${telegramToken}/deleteWebhook`;
+    const response = UrlFetchApp.fetch(apiUrl, {muteHttpExceptions: true});
     const result = JSON.parse(response.getContentText());
-    Logger.log(`deleteWebhook response: ${JSON.stringify(result)}`);
+
+    if (result.ok) {
+        Logger.log(`✅ Вебхук успешно удален: ${JSON.stringify(result)}`);
+    } else {
+        Logger.log(`❌ ОШИБКА удаления вебхука: ${JSON.stringify(result)}`);
+    }
     return result;
   } catch (e) {
-    Logger.log(`Ошибка при удалении вебхука: ${e.message}`);
+    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при удалении вебхука: ${e.message}\nStack: ${e.stack || 'N/A'}`);
     return { ok: false, description: e.message };
   }
 }
@@ -176,19 +183,19 @@ function deleteTelegramWebhook() {
  * @returns {object} - Информация о вебхуке.
  */
 function getTelegramWebhookInfo() {
-  const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
-  if (!telegramToken) {
-    return { ok: false, description: "TELEGRAM_TOKEN не найден в ScriptProperties!" };
-  }
-
-  const apiUrl = `https://api.telegram.org/bot${telegramToken}/getWebhookInfo`;
   try {
-    const response = UrlFetchApp.fetch(apiUrl);
+    const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
+    if (!telegramToken) {
+      throw new Error("TELEGRAM_TOKEN не найден в ScriptProperties!");
+    }
+
+    const apiUrl = `https://api.telegram.org/bot${telegramToken}/getWebhookInfo`;
+    const response = UrlFetchApp.fetch(apiUrl, {muteHttpExceptions: true});
     const result = JSON.parse(response.getContentText());
-    Logger.log(`getWebhookInfo response: ${JSON.stringify(result)}`);
+    Logger.log(`ℹ️ Информация о вебхуке: ${JSON.stringify(result)}`);
     return result;
   } catch (e) {
-    Logger.log(`Ошибка при получении информации о вебхуке: ${e.message}`);
+    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при получении информации о вебхуке: ${e.message}\nStack: ${e.stack || 'N/A'}`);
     return { ok: false, description: e.message };
   }
 }

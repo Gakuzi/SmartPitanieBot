@@ -34,7 +34,7 @@ function showWebhookManagerDialog() {
 
 /**
  * Получает статус вебхука, анализирует его и возвращает результат.
- * Реализует отказоустойчивую пошаговую логику.
+ * Реализует отказоустойчивую пошаговую логику с подробным логированием.
  */
 function getWebhookStatusForDialog() {
   let webAppUrl = '';
@@ -46,12 +46,11 @@ function getWebhookStatusForDialog() {
     webAppUrl = ScriptApp.getService().getUrl();
     webhookInfo = getTelegramWebhookInfo(); // Эта функция из 2_telegram_api.js
     if (!webhookInfo.ok) {
-      // Если запрос к Telegram неуспешен, создаем ошибку
       throw new Error(webhookInfo.description || 'Неизвестная ошибка Telegram API.');
     }
   } catch (e) {
-    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при получении данных от Telegram: ${e.message}`);
-    // Немедленно возвращаем типовую ошибку, не доходя до AI
+    const errorMessage = `Этап 1: Ошибка связи с Telegram. ${e.message}`;
+    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА: ${errorMessage}\nStack: ${e.stack || 'N/A'}`);
     return {
       ok: false,
       webAppUrl: webAppUrl, 
@@ -60,7 +59,7 @@ function getWebhookStatusForDialog() {
       analysis: {
         status: "CRITICAL",
         summary: "Ошибка связи с Telegram",
-        details: `Не удалось получить данные о вебхуке от Telegram. Это может быть связано с неверным токеном бота. Ошибка: ${e.message}`,
+        details: `Не удалось получить данные о вебхуке от Telegram. Ошибка: ${e.message}`,
         solution: "1. Убедитесь, что токен Telegram бота указан верно в меню 'Установить токен Telegram'.\n2. Проверьте интернет-соединение и доступность серверов Telegram."
       }
     };
@@ -69,11 +68,9 @@ function getWebhookStatusForDialog() {
   // --- Этап 2: Запрос к AI --- 
   try {
     const analysis = analyzeWebhookStatus(webhookInfo.result, webAppUrl);
-    // Проверяем, не вернул ли AI свою ошибку (например, таймаут или неверный ключ)
     if (analysis.error) {
-      throw new Error(analysis.details || 'AI вернул ошибку без деталей.');
+      throw new Error(`AI вернул ошибку: ${analysis.error}. Детали: ${analysis.details}`);
     }
-    // Успех! Возвращаем полный анализ.
     return {
       ok: true,
       webAppUrl: webAppUrl,
@@ -82,10 +79,10 @@ function getWebhookStatusForDialog() {
       analysis: analysis
     };
   } catch (aiError) {
-    Logger.log(`⚠️ Ошибка анализа AI: ${aiError.message}`);
-    // Возвращаем типовую ошибку AI, но с сырыми данными от Telegram
+    const errorMessage = `Этап 2: Ошибка анализа AI. ${aiError.message}`;
+    Logger.log(`⚠️ ПРЕДУПРЕЖДЕНИЕ: ${errorMessage}\nStack: ${aiError.stack || 'N/A'}`);
     return {
-      ok: true, // ok:true, потому что основная информация от Telegram получена
+      ok: true, 
       webAppUrl: webAppUrl,
       editorUrl: editorUrl,
       rawInfo: webhookInfo.result,
@@ -94,7 +91,6 @@ function getWebhookStatusForDialog() {
         summary: "AI-анализатор недоступен",
         details: `Данные от Telegram успешно получены, но не удалось получить их анализ от нейросети. Ошибка: ${aiError.message}`,
         solution: "1. Проверьте правильность ключа Gemini API и его активацию в Google Cloud Console.\n2. Проблема может быть временной. Попробуйте обновить через минуту.",
-        // Добавляем сырые данные в текстовом виде для пользователя
         rawTelegramData: JSON.stringify(webhookInfo.result, null, 2)
       }
     };
@@ -109,7 +105,9 @@ function getWebhookStatusForDialog() {
  */
 function setWebhookFromDialog(url) {
   if (!url || !url.startsWith("https://script.google.com/macros/s/")) {
-    return { ok: false, description: "Предоставлен недействительный URL веб-приложения Google Apps Script." };
+    const errorDesc = "Предоставлен недействительный URL веб-приложения Google Apps Script.";
+    Logger.log(`❌ Ошибка установки вебхука: ${errorDesc} URL: ${url}`);
+    return { ok: false, description: errorDesc };
   }
   return setTelegramWebhook(url);
 }
@@ -138,8 +136,10 @@ function setTelegramToken() {
     if (token) {
       PropertiesService.getScriptProperties().setProperty('TELEGRAM_TOKEN', token);
       ui.alert('Токен Telegram успешно сохранен.');
+      Logger.log('✅ Токен Telegram сохранен.');
     } else {
       ui.alert('Токен не может быть пустым.');
+      Logger.log('⚠️ Попытка сохранить пустой токен Telegram.');
     }
   }
 }
@@ -160,8 +160,11 @@ function setGeminiApiKey() {
     if (apiKey) {
       PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', apiKey);
       ui.alert('Ключ Gemini API успешно сохранен.');
-    } else {
+      Logger.log('✅ Ключ Gemini API сохранен.');
+    }
+    else {
       ui.alert('Ключ API не может быть пустым.');
+      Logger.log('⚠️ Попытка сохранить пустой ключ Gemini API.');
     }
   }
 }

@@ -3,18 +3,19 @@
  */
 
 /**
- * Вызывает модель Gemini Flash и возвращает структурированный ответ.
+ * Вызывает модель Gemini Flash и возвращает структурированный ответ с подробным логированием.
  * @param {string} prompt - Текстовый промт для нейросети.
  * @param {boolean} [isJsonResponse=true] - Ожидается ли JSON в ответе.
- * @returns {object|string|null} - Распарсенный JSON, строка или null в случае ошибки.
+ * @returns {object|string} - Распарсенный JSON, строка или объект с ошибкой.
  */
 function callGemini(prompt, isJsonResponse = true) {
   const scriptProps = PropertiesService.getScriptProperties();
   const apiKey = scriptProps.getProperty('GEMINI_API_KEY');
 
   if (!apiKey) {
-    Logger.log("❌ Ошибка: Ключ GEMINI_API_KEY не найден в ScriptProperties.");
-    return { error: 'Ключ GEMINI_API_KEY не найден', details: 'Ключ API не был найден в настройках скрипта.' };
+    const errorMsg = 'Ключ GEMINI_API_KEY не найден в ScriptProperties.';
+    Logger.log(`❌ ОШИБКА: ${errorMsg}`);
+    return { error: 'Ключ не найден', details: errorMsg };
   }
 
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
@@ -32,7 +33,6 @@ function callGemini(prompt, isJsonResponse = true) {
     contentType: 'application/json',
     payload: JSON.stringify(payload),
     muteHttpExceptions: true,
-    // Устанавливаем тайм-аут на 20 секунд
     connectTimeout: 20000 
   };
 
@@ -43,11 +43,13 @@ function callGemini(prompt, isJsonResponse = true) {
 
     if (responseCode === 200) {
       const data = JSON.parse(responseBody);
-      const rawText = data.candidates[0]?.content?.parts[0]?.text;
+      // Безопасное извлечение текста
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!rawText) {
-        Logger.log(`❌ Gemini API не вернул текст. Ответ: ${responseBody}`);
-        return { error: 'Пустой ответ от Gemini API', details: responseBody };
+        const errorMsg = 'Gemini API вернул пустой текстовый ответ.';
+        Logger.log(`❌ ОШИБКА: ${errorMsg} Ответ: ${responseBody}`);
+        return { error: 'Пустой ответ от AI', details: responseBody };
       }
 
       if (isJsonResponse) {
@@ -55,19 +57,22 @@ function callGemini(prompt, isJsonResponse = true) {
           const cleanJson = rawText.replace(/^```json\s*|```$/g, '');
           return JSON.parse(cleanJson);
         } catch (e) {
-          Logger.log(`❌ Ошибка парсинга JSON от Gemini: ${e.message}. Ответ: ${rawText}`);
+          const errorMsg = `Ошибка парсинга JSON от Gemini: ${e.message}`;
+          Logger.log(`❌ ОШИБКА: ${errorMsg} Ответ: ${rawText}`);
           return { error: 'Ошибка парсинга ответа AI', details: rawText };
         }
       } else {
         return rawText;
       }
     } else {
-      Logger.log(`❌ Ошибка вызова Gemini API. Статус: ${responseCode}. Ответ: ${responseBody}`);
+      const errorMsg = `Ошибка вызова Gemini API. Статус: ${responseCode}`;
+      Logger.log(`❌ ОШИБКА: ${errorMsg} Ответ: ${responseBody}`);
       return { error: `Ошибка API. Статус: ${responseCode}`, details: responseBody };
     }
   } catch (e) {
-    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при вызове UrlFetchApp: ${e.message}`);
-    return { error: 'Критическая ошибка UrlFetchApp', details: e.message };
+    const errorMsg = `КРИТИЧЕСКАЯ ОШИБКА при вызове UrlFetchApp: ${e.message}`;
+    Logger.log(`❌ ${errorMsg}\nStack: ${e.stack || 'N/A'}`);
+    return { error: 'Критическая ошибка сети', details: e.message };
   }
 }
 
@@ -80,11 +85,12 @@ function callGemini(prompt, isJsonResponse = true) {
 function analyzeWebhookStatus(webhookInfo, webAppUrl) {
   const prompt = generateWebhookAnalysisPrompt(webhookInfo, webAppUrl);
   if (!prompt) {
+      // Этот случай обрабатывается в getWebhookStatusForDialog, но для надежности оставляем
       return {
           status: "CRITICAL",
           summary: "Вебхук не установлен.",
           details: "Система не обнаружила установленный вебхук для вашего бота.",
-          solution: "1. Убедитесь, что вы развернули проект как веб-приложение.\n2. Скопируйте URL развертывания (если он отличается от автоматически определенного) и вставьте его в поле ниже.\n3. Нажмите кнопку 'Установить / Обновить'."
+          solution: "1. Убедитесь, что вы развернули проект как веб-приложение.\n2. Скопируйте URL развертывания и вставьте его в поле ниже.\n3. Нажмите кнопку 'Установить / Обновить'."
       };
   }
   return callGemini(prompt, true);
