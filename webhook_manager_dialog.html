@@ -243,7 +243,6 @@
 
   <script>
     const TIMEOUT_DURATION = 30000; // 30 секунд
-    let requestTimeout = null;
 
     const loader = document.getElementById('loader');
     const loaderStatus = document.getElementById('loaderStatus');
@@ -276,7 +275,6 @@
     }
 
     function hideLoader() {
-        clearTimeout(requestTimeout);
         loader.classList.add('hidden');
         mainContent.classList.remove('hidden');
     }
@@ -319,7 +317,6 @@
             rawDataSection.classList.remove('hidden');
         }
 
-        // Show dev links if status is not OK
         if (analysis.status !== 'OK') {
             devLinksSection.classList.remove('hidden');
             gasEditorLink.href = editorUrl;
@@ -338,18 +335,22 @@
         updateStatusPanel(timeoutAnalysis);
     }
 
-    function runServerFunction(functionName, ...args) {
+    function runServerFunctionWithTimeout(functionName, ...args) {
         return new Promise((resolve, reject) => {
-            const handler = (response) => {
-                clearTimeout(requestTimeout);
-                if (response && response.error) {
-                    reject(new Error(response.error));
-                } else {
-                    resolve(response);
-                }
-            };
-            requestTimeout = setTimeout(() => reject(new Error('timeout')), TIMEOUT_DURATION);
-            google.script.run.withSuccessHandler(handler).withFailureHandler(reject)[functionName](...args);
+            const serverCall = new Promise((res, rej) => {
+                google.script.run
+                    .withSuccessHandler(res)
+                    .withFailureHandler(rej)
+                    [functionName](...args);
+            });
+
+            const timeout = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('timeout')), TIMEOUT_DURATION);
+            });
+
+            Promise.race([serverCall, timeout])
+                .then(resolve)
+                .catch(reject);
         });
     }
 
@@ -357,7 +358,7 @@
         showLoader('Получение статуса вебхука...');
         showMessage('', 'hidden');
         try {
-            const response = await runServerFunction('getWebhookStatusForDialog');
+            const response = await runServerFunctionWithTimeout('getWebhookStatusForDialog');
             editorUrl = response.editorUrl;
             if (response.ok) {
                 autoUrl = response.webAppUrl;
@@ -386,7 +387,7 @@
     async function handleAction(actionFunction, ...args) {
         showLoader('Выполнение операции на сервере...');
         try {
-            const result = await runServerFunction(actionFunction, ...args);
+            const result = await runServerFunctionWithTimeout(actionFunction, ...args);
             if (result.ok) {
                 showMessage('Операция успешно выполнена! Перезагружаю статус...', 'success');
             } else {
