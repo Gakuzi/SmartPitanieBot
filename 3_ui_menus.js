@@ -28,19 +28,43 @@ function createCustomMenu() {
 function showWebhookManagerDialog() {
   const html = HtmlService.createHtmlOutputFromFile('webhook_manager_dialog')
     .setWidth(700)
-    .setHeight(550);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Управление вебхуком Telegram');
+    .setHeight(650); // Увеличим высоту для нового контента
+  SpreadsheetApp.getUi().showModalDialog(html, 'Анализатор статуса вебхука');
 }
 
 /**
- * Получает статус вебхука и URL веб-приложения для диалогового окна.
- * @returns {object} - Объект с информацией о статусе и URL.
+ * Получает статус вебхука, анализирует его с помощью AI и возвращает результат.
+ * @returns {object} - Объект с технической информацией и анализом от AI.
  */
 function getWebhookStatusForDialog() {
-  const webAppUrl = ScriptApp.getService().getUrl();
-  const webhookInfo = getTelegramWebhookInfo();
-  return { ...webhookInfo, webAppUrl };
+  try {
+    const webAppUrl = ScriptApp.getService().getUrl();
+    const webhookInfo = getTelegramWebhookInfo();
+    
+    // Отправляем данные на анализ в Gemini
+    const analysis = analyzeWebhookStatus(webhookInfo, webAppUrl);
+    
+    return {
+      ok: true,
+      webAppUrl: webAppUrl,
+      rawInfo: webhookInfo.result || {},
+      analysis: analysis
+    };
+  } catch (e) {
+    Logger.log(`Ошибка в getWebhookStatusForDialog: ${e.message}`);
+    return {
+      ok: false,
+      error: e.message,
+      analysis: {
+        status: "CRITICAL",
+        summary: "Ошибка на стороне сервера",
+        details: "Не удалось получить или проанализировать статус вебхука. Ошибка: ${e.message}",
+        solution: "1. Проверьте логи скрипта (меню 'Выполнения').\n2. Убедитесь, что у вас есть доступ к API Telegram и Gemini.\n3. Попробуйте перезагрузить страницу."
+      }
+    };
+  }
 }
+
 
 /**
  * Устанавливает вебхук из диалогового окна.
@@ -48,8 +72,8 @@ function getWebhookStatusForDialog() {
  * @returns {object} - Результат операции.
  */
 function setWebhookFromDialog(url) {
-  if (!url) {
-    return { ok: false, description: "URL не был предоставлен." };
+  if (!url || !url.startsWith("https://script.google.com/macros/s/")) {
+    return { ok: false, description: "Предоставлен недействительный URL веб-приложения Google Apps Script." };
   }
   return setTelegramWebhook(url);
 }

@@ -5,10 +5,10 @@
 /**
  * Вызывает модель Gemini Flash и возвращает структурированный ответ.
  * @param {string} prompt - Текстовый промт для нейросети.
- * @param {string} [chatId] - ID чата для отладки.
- * @returns {{text: string, buttons: Array<{text: string, callback_data: string}>}|null} - Объект с текстом и кнопками или null.
+ * @param {boolean} [isJsonResponse=true] - Ожидается ли JSON в ответе.
+ * @returns {object|string|null} - Распарсенный JSON, строка или null в случае ошибки.
  */
-function callGemini(prompt, chatId) {
+function callGemini(prompt, isJsonResponse = true) {
   const scriptProps = PropertiesService.getScriptProperties();
   const apiKey = scriptProps.getProperty('GEMINI_API_KEY');
 
@@ -20,10 +20,13 @@ function callGemini(prompt, chatId) {
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
-    "generationConfig": {
-      "responseMimeType": "application/json",
-    }
+    generationConfig: {}
   };
+
+  if (isJsonResponse) {
+    payload.generationConfig.responseMimeType = "application/json";
+  }
+
   const options = {
     method: 'post',
     contentType: 'application/json',
@@ -39,24 +42,22 @@ function callGemini(prompt, chatId) {
     if (responseCode === 200) {
       const data = JSON.parse(responseBody);
       const rawText = data.candidates[0]?.content?.parts[0]?.text;
-      if (rawText) {
-        // Попытка распарсить JSON из ответа
-        try {
-          // Удаляем "```json" и "```" из ответа
-          const cleanJson = rawText.replace(/^```json\s*|```$/g, '');
-          const parsed = JSON.parse(cleanJson);
-          return {
-            text: parsed.text || '',
-            buttons: parsed.buttons || []
-          };
-        } catch (e) {
-          Logger.log(`❌ Ошибка парсинга JSON от Gemini: ${e.message}. Ответ: ${rawText}`);
-          // Если парсинг не удался, возвращаем просто текст
-          return { text: rawText, buttons: [] };
-        }
-      } else {
+
+      if (!rawText) {
         Logger.log(`❌ Gemini API не вернул текст. Ответ: ${responseBody}`);
         return null;
+      }
+
+      if (isJsonResponse) {
+        try {
+          const cleanJson = rawText.replace(/^```json\s*|```$/g, '');
+          return JSON.parse(cleanJson);
+        } catch (e) {
+          Logger.log(`❌ Ошибка парсинга JSON от Gemini: ${e.message}. Ответ: ${rawText}`);
+          return { error: 'Ошибка парсинга ответа AI', details: rawText };
+        }
+      } else {
+        return rawText;
       }
     } else {
       Logger.log(`❌ Ошибка вызова Gemini API. Статус: ${responseCode}. Ответ: ${responseBody}`);
@@ -66,6 +67,63 @@ function callGemini(prompt, chatId) {
     Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при вызове UrlFetchApp: ${e.message}`);
     return null;
   }
+}
+
+/**
+ * Анализирует статус вебхука с помощью Gemini.
+ * @param {object} webhookInfo - Объект с информацией о вебхуке от Telegram.
+ * @param {string} webAppUrl - URL текущего веб-приложения.
+ * @returns {object} - Структурированный анализ от Gemini.
+ */
+function analyzeWebhookStatus(webhookInfo, webAppUrl) {
+  const prompt = generateWebhookAnalysisPrompt(webhookInfo, webAppUrl);
+  if (!prompt) {
+      return {
+          status: "CRITICAL",
+          summary: "Вебхук не установлен.",
+          details: "Система не обнаружила установленный вебхук для вашего бота.",
+          solution: "1. Убедитесь, что вы развернули проект как веб-приложение.\n2. Скопируйте URL развертывания (если он отличается от автоматически определенного) и вставьте его в поле ниже.\n3. Нажмите кнопку 'Установить / Обновить'."
+      };
+  }
+  return callGemini(prompt, true);
+}
+
+/**
+ * Генерирует промт для анализа статуса вебхука.
+ * @param {object} webhookInfo - Информация о вебхуке.
+ * @param {string} webAppUrl - URL веб-приложения.
+ * @returns {string|null} - Сгенерированный промт или null.
+ */
+function generateWebhookAnalysisPrompt(webhookInfo, webAppUrl) {
+    if (!webhookInfo || !webhookInfo.result || !webhookInfo.result.url) {
+        return null; // Вебхук не установлен
+    }
+
+    const { result } = webhookInfo;
+
+    return `
+    Ты — технический эксперт, который помогает пользователям Google Apps Script настроить Telegram вебхук.
+    Твоя задача — проанализировать JSON-данные о статусе вебхука, сравнить их с ожидаемым URL и дать четкий, полезный и дружелюбный фидбек.
+
+    Вот данные для анализа:
+    - Ожидаемый URL веб-приложения: ${webAppUrl}
+    - Данные от Telegram API (getWebhookInfo): ${JSON.stringify(result, null, 2)}
+
+    Проанализируй эти данные и верни JSON-объект СТРОГО следующей структуры:
+    {
+      "status": "OK" | "WARNING" | "CRITICAL",
+      "summary": "Краткий вердикт на русском языке (до 10 слов)",
+      "details": "Подробное объяснение ситуации на русском языке. Что означает текущий статус или ошибка? На что это влияет?",
+      "solution": "Пошаговая инструкция на русском языке, что пользователю нужно сделать, чтобы исправить проблему. Если все хорошо, пожелай хорошего дня."
+    }
+
+    Критерии для статусов:
+    - "OK": URL вебхука ТОЧНО совпадает с ожидаемым URL, и нет сообщений об ошибках (last_error_message is null or empty).
+    - "WARNING": URL совпадает, но есть last_error_message. Это означает, что Telegram не может связаться с твоим скриптом. Или есть ожидающие обновления (pending_update_count > 0), что может говорить о проблемах.
+    - "CRITICAL": URL вебхука НЕ СОВПАДАЕТ с ожидаемым URL. Это самая главная ошибка, бот не будет работать.
+
+    Проведи анализ и верни только JSON.
+  `;
 }
 
 

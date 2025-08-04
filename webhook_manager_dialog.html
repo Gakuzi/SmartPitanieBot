@@ -2,179 +2,209 @@
 <html>
 <head>
   <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Roboto', sans-serif;
       margin: 0;
       padding: 20px;
       background-color: #f8f9fa;
-      color: #343a40;
+      color: #212529;
     }
     .container {
-      max-width: 600px;
+      max-width: 650px;
       margin: 0 auto;
-      background-color: #ffffff;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
     h2 {
-      color: #007bff;
+      color: #343a40;
       text-align: center;
       margin-bottom: 25px;
-      font-weight: 500;
+      font-weight: 700;
     }
-    .status-section, .url-section {
-      background-color: #e9ecef;
-      border-left: 4px solid #007bff;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 4px;
-      font-size: 0.9em;
-      line-height: 1.6;
+    .status-panel {
+        border-radius: 8px;
+        margin-bottom: 20px;
+        padding: 20px;
+        border-left: 5px solid;
+        background-color: #fff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
     }
-    .status-section strong, .url-section strong {
-      color: #0056b3;
+    .status-panel.ok {
+        border-color: #28a745;
+    }
+    .status-panel.warning {
+        border-color: #ffc107;
+    }
+    .status-panel.critical {
+        border-color: #dc3545;
+    }
+    .status-header {
+        display: flex;
+        align-items: center;
+        font-size: 1.4em;
+        font-weight: 500;
+        margin-bottom: 15px;
+    }
+    .status-icon {
+        font-size: 1.5em;
+        margin-right: 15px;
+    }
+    .status-panel.ok .status-header { color: #28a745; }
+    .status-panel.warning .status-header { color: #ffc107; }
+    .status-panel.critical .status-header { color: #dc3545; }
+
+    .info-section {
+        margin-top: 15px;
+    }
+    .info-section h3 {
+        font-size: 1.1em;
+        color: #495057;
+        margin-bottom: 8px;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 5px;
+    }
+    .info-section p, .info-section pre {
+        font-size: 0.95em;
+        line-height: 1.6;
+        color: #495057;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    .info-section pre {
+        background-color: #e9ecef;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+    }
+
+    .url-section {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
+    }
+    .url-section strong {
       display: block;
       margin-bottom: 10px;
-    }
-    .status-section pre {
-      white-space: pre-wrap;
-      word-break: break-all;
-      background-color: #f1f3f5;
-      padding: 10px;
-      border-radius: 4px;
-      margin-top: 10px;
-      font-size: 0.85em;
+      color: #343a40;
     }
     .url-section code {
-        background-color: #f1f3f5;
-        padding: 2px 5px;
-        border-radius: 3px;
+        background-color: #e9ecef;
+        padding: 3px 6px;
+        border-radius: 4px;
         word-break: break-all;
+        display: block;
+        margin-bottom: 15px;
     }
     .url-section input[type="text"] {
         width: 100%;
-        padding: 8px;
-        margin-top: 5px;
+        padding: 10px;
         border: 1px solid #ced4da;
         border-radius: 4px;
         box-sizing: border-box;
+        font-size: 1em;
     }
+    .url-section input[type="text"]:focus {
+        border-color: #80bdff;
+        outline: 0;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+
     .button-group {
       display: flex;
-      justify-content: center;
+      justify-content: space-between;
       gap: 15px;
       margin-top: 25px;
     }
     .btn {
-      padding: 10px 25px;
+      padding: 10px 20px;
       border: none;
       border-radius: 5px;
       cursor: pointer;
       font-size: 1em;
-      transition: background-color 0.3s ease, transform 0.2s ease;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      font-weight: 500;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .btn-primary {
-      background-color: #007bff;
-      color: white;
-    }
-    .btn-primary:hover {
-      background-color: #0056b3;
-      transform: translateY(-1px);
-    }
-    .btn-danger {
-      background-color: #dc3545;
-      color: white;
-    }
-    .btn-danger:hover {
-      background-color: #c82333;
-      transform: translateY(-1px);
-    }
-    .btn-secondary {
-      background-color: #6c757d;
-      color: white;
-    }
-    .btn-secondary:hover {
-      background-color: #5a6268;
-      transform: translateY(-1px);
-    }
-    .progress-bar-container {
-      width: 100%;
-      background-color: #e0e0e0;
-      border-radius: 5px;
-      margin-top: 20px;
-      overflow: hidden;
-      height: 10px;
-      display: none; /* Hidden by default */
-    }
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background-color: #28a745;
-      border-radius: 5px;
-      transition: width 0.5s ease;
-    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background-color: #007bff; color: white; }
+    .btn-primary:hover { background-color: #0056b3; }
+    .btn-danger { background-color: #dc3545; color: white; }
+    .btn-danger:hover { background-color: #c82333; }
+    .btn-secondary { background-color: #6c757d; color: white; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .btn-refresh { background-color: #17a2b8; color: white; }
+    .btn-refresh:hover { background-color: #117a8b; }
+
     .message {
       margin-top: 20px;
-      padding: 10px;
-      border-radius: 4px;
+      padding: 12px;
+      border-radius: 5px;
       text-align: center;
-      font-weight: bold;
+      font-weight: 500;
     }
-    .message.success {
-      background-color: #d4edda;
-      color: #155724;
-    }
-    .message.error {
-      background-color: #f8d7da;
-      color: #721c24;
-    }
-    .hidden {
-      display: none;
-    }
+    .message.success { background-color: #d4edda; color: #155724; }
+    .message.error { background-color: #f8d7da; color: #721c24; }
+    .hidden { display: none; }
+    .loader { text-align: center; padding: 40px; font-size: 1.2em; color: #6c757d; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Управление вебхуком Telegram</h2>
+    <h2>Анализатор статуса вебхука</h2>
 
-    <div class="status-section">
-      <strong>Текущий статус вебхука:</strong>
-      <pre id="webhookStatus">Загрузка...</pre>
+    <div id="loader" class="loader">Загрузка и анализ данных...</div>
+
+    <div id="mainContent" class="hidden">
+        <div id="statusPanel" class="status-panel">
+            <div class="status-header">
+                <span id="statusIcon" class="status-icon"></span>
+                <span id="statusSummary"></span>
+            </div>
+            <div class="info-section">
+                <h3>Подробности</h3>
+                <p id="statusDetails"></p>
+            </div>
+            <div class="info-section">
+                <h3>Решение</h3>
+                <p id="statusSolution"></p>
+            </div>
+        </div>
+
+        <div class="url-section">
+            <strong>URL Веб-приложения</strong>
+            <p>Автоматически определенный URL:</p>
+            <code id="autoWebAppUrl">-</code>
+            <p>Если URL выше неверен или вы хотите использовать другой, введите его сюда:</p>
+            <input type="text" id="manualWebhookUrl" placeholder="https://script.google.com/macros/s/ваше_id/exec">
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-refresh" id="refreshBtn">Обновить</button>
+          <button class="btn btn-primary" id="setWebhookBtn">Установить / Обновить</button>
+          <button class="btn btn-danger" id="deleteWebhookBtn">Удалить</button>
+          <button class="btn btn-secondary" id="closeDialogBtn">Закрыть</button>
+        </div>
+
+        <div class="message hidden" id="dialogMessage"></div>
     </div>
-
-    <div class="url-section">
-        <strong>URL Веб-приложения</strong>
-        <p>Автоматически определенный URL:</p>
-        <code id="autoWebAppUrl">Загрузка...</code>
-        <p style="margin-top: 15px;">Если URL выше неверен, введите правильный URL развертывания вручную:</p>
-        <input type="text" id="manualWebhookUrl" placeholder="https://script.google.com/macros/s/ваше_id/exec">
-    </div>
-
-    <div class="button-group" id="actionButtons">
-      <button class="btn btn-primary" id="setWebhookBtn">Установить / Обновить</button>
-      <button class="btn btn-danger hidden" id="deleteWebhookBtn">Удалить</button>
-      <button class="btn btn-secondary" id="closeDialogBtn">Закрыть</button>
-    </div>
-
-    <div class="progress-bar-container" id="progressBarContainer">
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
-
-    <div class="message hidden" id="dialogMessage"></div>
   </div>
 
   <script>
-    const webhookStatusElem = document.getElementById('webhookStatus');
+    const loader = document.getElementById('loader');
+    const mainContent = document.getElementById('mainContent');
+    const statusPanel = document.getElementById('statusPanel');
+    const statusIcon = document.getElementById('statusIcon');
+    const statusSummary = document.getElementById('statusSummary');
+    const statusDetails = document.getElementById('statusDetails');
+    const statusSolution = document.getElementById('statusSolution');
     const autoWebAppUrlElem = document.getElementById('autoWebAppUrl');
     const manualWebhookUrlInput = document.getElementById('manualWebhookUrl');
     const setWebhookBtn = document.getElementById('setWebhookBtn');
     const deleteWebhookBtn = document.getElementById('deleteWebhookBtn');
     const closeDialogBtn = document.getElementById('closeDialogBtn');
-    const progressBarContainer = document.getElementById('progressBarContainer');
-    const progressBar = document.getElementById('progressBar');
+    const refreshBtn = document.getElementById('refreshBtn');
     const dialogMessage = document.getElementById('dialogMessage');
 
     let autoUrl = '';
@@ -182,116 +212,98 @@
     function showMessage(msg, type) {
       dialogMessage.textContent = msg;
       dialogMessage.className = `message ${type}`;
-      dialogMessage.classList.remove('hidden');
     }
 
-    function hideMessage() {
-      dialogMessage.classList.add('hidden');
-    }
+    function updateStatusPanel(analysis) {
+        statusPanel.className = 'status-panel'; // Reset classes
+        if (!analysis) {
+            analysis = { status: 'CRITICAL', summary: 'Ошибка анализа', details: 'Не удалось получить анализ от AI.', solution: 'Проверьте логи и повторите попытку.' };
+        }
 
-    function showProgressBar() {
-      progressBarContainer.style.display = 'block';
-      progressBar.style.width = '0%';
-    }
-
-    function updateProgressBar(progress) {
-      progressBar.style.width = `${progress}%`;
-    }
-
-    function hideProgressBar() {
-      progressBarContainer.style.display = 'none';
+        switch (analysis.status) {
+            case 'OK':
+                statusPanel.classList.add('ok');
+                statusIcon.textContent = '✅';
+                break;
+            case 'WARNING':
+                statusPanel.classList.add('warning');
+                statusIcon.textContent = '⚠️';
+                break;
+            case 'CRITICAL':
+            default:
+                statusPanel.classList.add('critical');
+                statusIcon.textContent = '❌';
+                break;
+        }
+        statusSummary.textContent = analysis.summary || 'Нет данных';
+        statusDetails.innerHTML = (analysis.details || 'Нет данных').replace(/\n/g, '<br>');
+        statusSolution.innerHTML = (analysis.solution || 'Нет данных').replace(/\n/g, '<br>');
     }
 
     function loadWebhookInfo() {
-      showProgressBar();
-      hideMessage();
-      updateProgressBar(20);
-      google.script.run
-        .withSuccessHandler(function(info) {
-          updateProgressBar(70);
-          let statusText = '';
-          if (info.result && info.result.url) {
-            statusText += `URL: ${info.result.url}\n`;
-            statusText += `Последняя ошибка: ${info.result.last_error_message || 'Нет'}\n`;
-            statusText += `Ожидающие обновления: ${info.result.pending_update_count}\n`;
-            deleteWebhookBtn.classList.remove('hidden');
-            setWebhookBtn.textContent = 'Обновить';
-          } else {
-            statusText += `Вебхук не установлен.\n`;
-            deleteWebhookBtn.classList.add('hidden');
-            setWebhookBtn.textContent = 'Установить';
-          }
-          webhookStatusElem.textContent = statusText;
-          
-          autoUrl = info.webAppUrl;
-          autoWebAppUrlElem.textContent = autoUrl;
+      loader.classList.remove('hidden');
+      mainContent.classList.add('hidden');
+      showMessage('', 'hidden'); // Clear previous messages
 
-          updateProgressBar(100);
-          hideProgressBar();
+      google.script.run
+        .withSuccessHandler(function(response) {
+          if (response.ok) {
+            autoUrl = response.webAppUrl;
+            autoWebAppUrlElem.textContent = autoUrl;
+            updateStatusPanel(response.analysis);
+            deleteWebhookBtn.style.display = response.rawInfo.url ? 'inline-block' : 'none';
+          } else {
+             updateStatusPanel(response.analysis);
+          }
+          loader.classList.add('hidden');
+          mainContent.classList.remove('hidden');
         })
         .withFailureHandler(function(error) {
-          hideProgressBar();
-          showMessage(`Ошибка загрузки статуса: ${error.message}`, 'error');
-          webhookStatusElem.textContent = 'Не удалось загрузить статус.';
-          autoWebAppUrlElem.textContent = 'Ошибка загрузки.';
-          deleteWebhookBtn.classList.add('hidden');
+          const errorAnalysis = {
+              status: 'CRITICAL',
+              summary: 'Критическая ошибка клиента',
+              details: `Не удалось выполнить запрос к серверу: ${error.message}`,
+              solution: 'Закройте и снова откройте диалоговое окно. Проверьте консоль браузера на наличие ошибок.'
+          };
+          updateStatusPanel(errorAnalysis);
+          loader.classList.add('hidden');
+          mainContent.classList.remove('hidden');
         })
         .getWebhookStatusForDialog();
+    }
+
+    function handleAction(actionFunction, ...args) {
+        loader.classList.remove('hidden');
+        mainContent.classList.add('hidden');
+        google.script.run
+            .withSuccessHandler(function(result) {
+                if (result.ok) {
+                    showMessage('Операция успешно выполнена!', 'success');
+                } else {
+                    showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
+                }
+                loadWebhookInfo(); // Always reload
+            })
+            .withFailureHandler(function(error) {
+                showMessage(`Критическая ошибка: ${error.message}`, 'error');
+                loadWebhookInfo(); // Try to reload to show current state
+            })
+            [actionFunction](...args);
     }
 
     setWebhookBtn.addEventListener('click', function() {
       const manualUrl = manualWebhookUrlInput.value.trim();
       const finalUrl = manualUrl || autoUrl;
-
       if (!finalUrl) {
-          showMessage('URL для установки вебхука не найден. Введите его вручную.', 'error');
+          showMessage('URL для установки не найден. Введите его вручную.', 'error');
           return;
       }
-
-      showProgressBar();
-      hideMessage();
-      updateProgressBar(20);
-      google.script.run
-        .withSuccessHandler(function(result) {
-          updateProgressBar(70);
-          if (result.ok) {
-            showMessage('Вебхук успешно установлен/обновлен.', 'success');
-          } else {
-            showMessage(`Ошибка: ${result.description || 'Неизвестная ошибка'}`, 'error');
-          }
-          loadWebhookInfo(); // Reload status
-        })
-        .withFailureHandler(function(error) {
-          hideProgressBar();
-          showMessage(`Произошла ошибка: ${error.message}`, 'error');
-        })
-        .setWebhookFromDialog(finalUrl); // Pass the chosen URL
+      handleAction('setWebhookFromDialog', finalUrl);
     });
 
-    deleteWebhookBtn.addEventListener('click', function() {
-      showProgressBar();
-      hideMessage();
-      updateProgressBar(20);
-      google.script.run
-        .withSuccessHandler(function(result) {
-          updateProgressBar(70);
-          if (result.ok) {
-            showMessage('Вебхук успешно удален.', 'success');
-          } else {
-            showMessage(`Ошибка удаления: ${result.description || 'Неизвестная ошибка'}`, 'error');
-          }
-          loadWebhookInfo(); // Reload status
-        })
-        .withFailureHandler(function(error) {
-          hideProgressBar();
-          showMessage(`Произошла ошибка: ${error.message}`, 'error');
-        })
-        .deleteWebhookFromDialog();
-    });
-
-    closeDialogBtn.addEventListener('click', function() {
-      google.script.host.close();
-    });
+    deleteWebhookBtn.addEventListener('click', () => handleAction('deleteWebhookFromDialog'));
+    refreshBtn.addEventListener('click', loadWebhookInfo);
+    closeDialogBtn.addEventListener('click', () => google.script.host.close());
 
     document.addEventListener('DOMContentLoaded', loadWebhookInfo);
   </script>
