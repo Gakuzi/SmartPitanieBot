@@ -242,9 +242,7 @@
   </div>
 
   <script>
-    const TIMEOUT_DURATION = 30000; // 30 секунд
-    let requestTimeoutId = null;
-
+    // --- DOM Elements ---
     const loader = document.getElementById('loader');
     const loaderStatus = document.getElementById('loaderStatus');
     const mainContent = document.getElementById('mainContent');
@@ -266,8 +264,11 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const dialogMessage = document.getElementById('dialogMessage');
 
+    // --- Global State ---
     let autoUrl = '';
     let editorUrl = '';
+
+    // --- Functions ---
 
     function logToServer(message) {
         google.script.run.logFromClient(message);
@@ -280,7 +281,6 @@
     }
 
     function hideLoader() {
-        if (requestTimeoutId) clearTimeout(requestTimeoutId);
         loader.classList.add('hidden');
         mainContent.classList.remove('hidden');
     }
@@ -292,28 +292,22 @@
 
     function updateStatusPanel(analysis) {
         statusPanel.className = 'status-panel'; // Reset classes
-        rawDataSection.classList.add('hidden'); // Hide raw data by default
-        devLinksSection.classList.add('hidden'); // Hide dev links by default
+        rawDataSection.classList.add('hidden');
+        devLinksSection.classList.add('hidden');
 
         if (!analysis) {
-            analysis = { status: 'CRITICAL', summary: 'Ошибка анализа', details: 'Не удалось получить анализ от AI.', solution: 'Проверьте логи и повторите попытку.' };
+            analysis = { status: 'CRITICAL', summary: 'Критическая ошибка клиента', details: 'Не удалось обработать ответ от сервера.', solution: 'Проверьте логи выполнения и консоль браузера.' };
         }
 
-        switch (analysis.status) {
-            case 'OK':
-                statusPanel.classList.add('ok');
-                statusIcon.textContent = '✅';
-                break;
-            case 'WARNING':
-                statusPanel.classList.add('warning');
-                statusIcon.textContent = '⚠️';
-                break;
-            case 'CRITICAL':
-            default:
-                statusPanel.classList.add('critical');
-                statusIcon.textContent = '❌';
-                break;
-        }
+        const statusMap = {
+            OK: { className: 'ok', icon: '✅' },
+            WARNING: { className: 'warning', icon: '⚠️' },
+            CRITICAL: { className: 'critical', icon: '❌' }
+        };
+        const statusInfo = statusMap[analysis.status] || statusMap.CRITICAL;
+
+        statusPanel.classList.add(statusInfo.className);
+        statusIcon.textContent = statusInfo.icon;
         statusSummary.textContent = analysis.summary || 'Нет данных';
         statusDetails.innerHTML = (analysis.details || 'Нет данных').replace(/\n/g, '<br>');
         statusSolution.innerHTML = (analysis.solution || 'Нет данных').replace(/\n/g, '<br>');
@@ -330,72 +324,23 @@
         }
     }
 
-    function handleTimeout(functionName) {
-        logToServer(`Client-side timeout reached for function: ${functionName}`);
-        hideLoader();
-        const timeoutAnalysis = {
-            status: 'CRITICAL',
-            summary: 'Сервер не отвечает (Тайм-аут)',
-            details: `Ваш запрос к серверу Google Apps Script (${functionName}) занял слишком много времени и был прерван. Это может произойти по нескольким причинам.`,
-            solution: `1. **Проверьте API ключи:** Неправильный или неактивный ключ Gemini API может вызывать бесконечное ожидание.\n2. **Проверьте логи выполнения:** Откройте ваш проект в Apps Script, перейдите в раздел \"Выполнения\" и посмотрите, нет ли там ошибок, которые мешают скрипту завершиться.\n3. **Проблемы с сетью Google:** Иногда сервисы Google могут работать медленно. Попробуйте повторить запрос через несколько минут.`
-        };
-        updateStatusPanel(timeoutAnalysis);
-    }
-
-    function runServerFunction(functionName, ...args) {
-        logToServer(`Calling server function: ${functionName}`);
-        
-        // Устанавливаем тайм-аут
-        requestTimeoutId = setTimeout(() => handleTimeout(functionName), TIMEOUT_DURATION);
-
-        google.script.run
-            .withSuccessHandler(response => {
-                clearTimeout(requestTimeoutId);
-                logToServer(`Server function ${functionName} responded successfully.`);
-                // Теперь обработка успеха находится здесь
-                if (functionName === 'getWebhookStatusForDialog') {
-                    handleLoadSuccess(response);
-                } else {
-                    handleActionSuccess(response);
-                }
-            })
-            .withFailureHandler(error => {
-                clearTimeout(requestTimeoutId);
-                logToServer(`Server function ${functionName} failed. Error: ${error.message}`);
-                // Обработка ошибки
-                handleLoadFailure(error);
-            })
-            [functionName](...args);
-    }
-
-    function handleLoadSuccess(response) {
+    function handleSuccess(response) {
+        logToServer("Server responded successfully.");
         editorUrl = response.editorUrl;
-        if (response.ok) {
-            autoUrl = response.webAppUrl;
-            autoWebAppUrlElem.textContent = autoUrl;
-            updateStatusPanel(response.analysis);
-            deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
-        } else {
-            updateStatusPanel(response.analysis);
-        }
+        autoUrl = response.webAppUrl;
+        autoWebAppUrlElem.textContent = autoUrl || "Не удалось определить";
+        updateStatusPanel(response.analysis);
+        deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
         hideLoader();
     }
 
-    function handleActionSuccess(result) {
-        if (result.ok) {
-            showMessage('Операция успешно выполнена! Перезагружаю статус...', 'success');
-        } else {
-            showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
-        }
-        loadWebhookInfo(); // Always reload
-    }
-
-    function handleLoadFailure(error) {
+    function handleFailure(error) {
+        logToServer(`Client-side error: ${error.message}`);
         const errorAnalysis = {
             status: 'CRITICAL',
             summary: 'Критическая ошибка клиента',
-            details: `Произошла непредвиденная ошибка на стороне клиента: ${error.message}`,
-            solution: 'Эта ошибка для разработчика. Пожалуйста, используйте инструменты ниже для отладки.'
+            details: `Произошла непредвиденная ошибка на стороне клиента, которая помешала связи с сервером. Ошибка: ${error.message}`,
+            solution: 'Эта ошибка для разработчика. Пожалуйста, используйте инструменты ниже для отладки. Проверьте консоль браузера (F12) на наличие красных ошибок.'
         };
         updateStatusPanel(errorAnalysis);
         hideLoader();
@@ -404,15 +349,30 @@
     function loadWebhookInfo() {
         showLoader('Получение статуса вебхука...');
         showMessage('', 'hidden');
-        runServerFunction('getWebhookStatusForDialog');
+        logToServer("Calling getWebhookStatusForDialog...");
+        google.script.run
+            .withSuccessHandler(handleSuccess)
+            .withFailureHandler(handleFailure)
+            .getWebhookStatusForDialog();
     }
 
     function handleAction(actionFunction, ...args) {
         showLoader('Выполнение операции на сервере...');
-        runServerFunction(actionFunction, ...args);
+        google.script.run
+            .withSuccessHandler(result => {
+                if (result.ok) {
+                    showMessage('Операция успешно выполнена! Перезагружаю статус...', 'success');
+                } else {
+                    showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
+                }
+                loadWebhookInfo(); // Always reload
+            })
+            .withFailureHandler(handleFailure)
+            [actionFunction](...args);
     }
 
-    setWebhookBtn.addEventListener('click', function() {
+    // --- Event Listeners ---
+    setWebhookBtn.addEventListener('click', () => {
       const manualUrl = manualWebhookUrlInput.value.trim();
       const finalUrl = manualUrl || autoUrl;
       if (!finalUrl) {
@@ -427,7 +387,7 @@
     closeDialogBtn.addEventListener('click', () => google.script.host.close());
 
     document.addEventListener('DOMContentLoaded', () => {
-        logToServer('Dialog opened.');
+        logToServer('Dialog opened and client script started.');
         loadWebhookInfo();
     });
   </script>
