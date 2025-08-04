@@ -99,14 +99,6 @@
       margin-bottom: 10px;
       color: #343a40;
     }
-    .url-section code {
-        background-color: #e9ecef;
-        padding: 3px 6px;
-        border-radius: 4px;
-        word-break: break-all;
-        display: block;
-        margin-bottom: 15px;
-    }
     .url-section input[type="text"] {
         width: 100%;
         padding: 10px;
@@ -219,6 +211,7 @@
                 <h3>Инструменты разработчика</h3>
                 <div class="dev-links">
                     <a id="gas-editor-link" href="#" target="_blank">Открыть в Apps Script</a>
+                    <a id="vscode-link" href="#" target="_blank" style="display: none;">Открыть в VS Code</a>
                 </div>
             </div>
         </div>
@@ -271,8 +264,8 @@
 
     function showLoader(statusText) {
         loaderStatus.textContent = statusText;
-        loader.classList.remove('hidden');
         mainContent.classList.add('hidden');
+        loader.classList.remove('hidden');
     }
 
     function hideLoader() {
@@ -287,8 +280,7 @@
 
     function updateStatusPanel(analysis) {
         statusPanel.className = 'status-panel'; // Reset classes
-        devLinksSection.classList.add('hidden');
-
+        
         if (!analysis) {
             analysis = { status: 'CRITICAL', summary: 'Критическая ошибка клиента', details: 'Не удалось обработать ответ от сервера.', solution: 'Проверьте логи выполнения и консоль браузера.' };
         }
@@ -306,8 +298,8 @@
         statusDetails.innerHTML = (analysis.details || 'Нет данных').replace(/\n/g, '<br>');
         statusSolution.innerHTML = (analysis.solution || 'Нет данных').replace(/\n/g, '<br>');
 
+        devLinksSection.classList.remove('hidden');
         if (basicInfo.editorUrl) {
-            devLinksSection.classList.remove('hidden');
             gasEditorLink.href = basicInfo.editorUrl;
         }
         if (basicInfo.localPath) {
@@ -334,20 +326,25 @@
         showMessage('', 'hidden');
         google.script.run
             .withSuccessHandler(response => {
+                hideLoader();
                 if (response.ok) {
                     basicInfo = response;
                     manualWebhookUrlInput.value = response.rawInfo.url || '';
                     rawTelegramData.textContent = JSON.stringify(response.rawInfo, null, 2);
                     deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
-                    statusPanel.classList.add('warning');
-                    statusIcon.textContent = '🤔';
-                    statusSummary.textContent = 'Требуется анализ';
-                    statusDetails.textContent = 'Базовая информация получена. Для получения рекомендаций запустите AI-анализ.';
-                    statusSolution.textContent = 'Нажмите кнопку \"Запустить AI-анализ\" ниже.';
+                    
+                    // Initial status before AI analysis
+                    const initialAnalysis = {
+                        status: 'WARNING',
+                        summary: 'Требуется анализ',
+                        details: 'Базовая информация получена. Для получения рекомендаций запустите AI-анализ.',
+                        solution: 'Нажмите кнопку "Запустить AI-анализ" ниже.'
+                    };
+                    updateStatusPanel(initialAnalysis);
+
                 } else {
                     handleFailure(new Error(response.error), 'Получение базовой информации');
                 }
-                hideLoader();
             })
             .withFailureHandler(err => handleFailure(err, 'Получение базовой информации'))
             .getBasicWebhookInfo();
@@ -362,12 +359,13 @@
         showLoader('Запуск AI-анализа... Это может занять до 30 секунд.');
         google.script.run
             .withSuccessHandler(response => {
+                hideLoader();
                 if (response.ok) {
                     updateStatusPanel(response.analysis);
                 } else {
-                    updateStatusPanel(response.analysis); // Show warning from server
+                    // Even if AI fails, show the warning/error it generated
+                    updateStatusPanel(response.analysis); 
                 }
-                hideLoader();
             })
             .withFailureHandler(err => handleFailure(err, 'AI-анализ'))
             .getAiAnalysis({ ...basicInfo, webAppUrl: manualUrl });
