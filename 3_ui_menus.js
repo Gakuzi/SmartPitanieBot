@@ -15,6 +15,8 @@ function createCustomMenu() {
   adminMenu.addItem('Настроить таблицу', 'setupAdminSheet');
   adminMenu.addItem('Управление вебхуком', 'showWebhookManagerDialog');
   adminMenu.addSeparator();
+  adminMenu.addItem('Снять/Установить защиту листов', 'toggleSheetProtection');
+  adminMenu.addSeparator();
 
   const settingsSubMenu = ui.createMenu('Настройки')
       .addItem('Установить токен Telegram', 'setTelegramToken')
@@ -201,11 +203,12 @@ function setupAdminSheet() {
     }
     settingsSheet.clear();
     const folder = DriveApp.getFileById(ss.getId()).getParents().next();
-    settingsSheet.getRange('A1:B3').setValues([
+    settingsSheet.getRange('A1:B2').setValues([
       ['ID таблицы пользователей', `=HYPERLINK("${usersSs.getUrl()}"; "${usersSsId}")`],
-      ['ID папки проекта', `=HYPERLINK("${folder.getUrl()}"; "${folder.getId()}")`],
-      ['Режим работы', 'AI']
+      ['ID папки проекта', `=HYPERLINK("${folder.getUrl()}"; "${folder.getId()}")`]
     ]);
+    settingsSheet.getRange('A3').setValue('Режим работы (AI - ✓)');
+    settingsSheet.getRange('B3').insertCheckboxes().check(); // AI mode by default
 
     // 5. Создание и настройка листа "Пользователи (Импорт)"
     let importSheet = ss.getSheetByName('Пользователи (Импорт)');
@@ -223,11 +226,60 @@ function setupAdminSheet() {
       }
     });
 
-    ui.alert('Таблица администратора успешно настроена.');
+    // 7. Установка защиты
+    setProtection(true);
+
+    ui.alert('Таблица администратора успешно настроена. Защита установлена.');
 
   } catch (e) {
     Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА при настройке таблицы администратора: ${e.message}\nStack: ${e.stack || 'N/A'}`);
     ui.alert(`Произошла ошибка: ${e.message}`);
+  }
+}
+
+/**
+ * Устанавливает или снимает защиту с ключевых листов и диапазонов.
+ * @param {boolean} [protect] - Если true, устанавливает защиту. Если false, снимает. Если не указано, переключает.
+ */
+function toggleSheetProtection(protect) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  const protections = ss.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+  const isProtected = protections.length > 0;
+
+  if (protect === undefined) {
+    protect = !isProtected;
+  }
+
+  if (protect) {
+    setProtection(true);
+    ui.alert('Защита установлена.');
+  } else {
+    protections.forEach(p => p.remove());
+    const rangeProtections = ss.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+    rangeProtections.forEach(p => p.remove());
+    ui.alert('Защита снята. Теперь вы можете редактировать все ячейки.');
+  }
+}
+
+/**
+ * Внутренняя функция для установки защиты.
+ */
+function setProtection() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const settingsSheet = ss.getSheetByName('Настройки');
+  if (settingsSheet) {
+    const protection = settingsSheet.protect().setDescription('Защита настроек');
+    protection.setUnprotectedRanges([settingsSheet.getRange('B3')]);
+    protection.removeEditors(protection.getEditors());
+    protection.addEditor(Session.getEffectiveUser());
+  }
+
+  const importSheet = ss.getSheetByName('Пользователи (Импорт)');
+  if (importSheet) {
+    const protection = importSheet.getRange('A1').protect().setDescription('Защита формулы импорта');
+    protection.removeEditors(protection.getEditors());
+    protection.addEditor(Session.getEffectiveUser());
   }
 }
 
