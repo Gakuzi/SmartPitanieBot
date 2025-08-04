@@ -46,7 +46,7 @@ function runAdminAction(actionName) {
 }
 
 /**
- * Переключает режим работы (AI/Ручной) с проверкой и созданием чекбокса.
+ * Переключает режим работы (AI/Ручной) с использованием getValue/setValue.
  */
 function toggleMode() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -59,20 +59,17 @@ function toggleMode() {
   }
 
   const modeCell = settingsSheet.getRange('B3');
-  
-  // Проверяем, есть ли уже чекбокс
-  const dataValidation = modeCell.getDataValidation();
-  const isCheckbox = dataValidation && dataValidation.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.CHECKBOX;
 
-  if (!isCheckbox) {
-    // Если чекбокса нет, создаем его
-    modeCell.insertCheckboxes();
+  // Убедимся, что в ячейке установлен формат чекбокса
+  const dataValidation = modeCell.getDataValidation();
+  if (!dataValidation || dataValidation.getCriteriaType() !== SpreadsheetApp.DataValidationCriteria.CHECKBOX) {
+    modeCell.setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
   }
 
-  const isAiMode = modeCell.isChecked() === true; // isChecked() может вернуть null
+  const isAiMode = modeCell.getValue() === true;
 
   // Переключаем режим
-  modeCell.setChecked(!isAiMode);
+  modeCell.setValue(!isAiMode);
 
   const newMode = !isAiMode ? 'AI' : 'Ручной';
   ui.alert(`Режим работы переключен на: ${newMode}`);
