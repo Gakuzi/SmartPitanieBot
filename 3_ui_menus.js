@@ -6,11 +6,13 @@
 // --- Боковая панель администратора в Google Sheets ---
 
 /**
- * Показывает боковую панель администратора.
+ * Показывает модальное окно администратора.
  */
 function showAdminPanel() {
-  const html = HtmlService.createHtmlOutputFromFile('AdminPanel');
-  SpreadsheetApp.getUi().showSidebar(html);
+  const html = HtmlService.createHtmlOutputFromFile('AdminPanel')
+    .setWidth(600)
+    .setHeight(550);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Центр управления ботом');
 }
 
 /**
