@@ -68,3 +68,18 @@ function setupProjectInfrastructure() {
     Logger.log("Возможно, вам нужно вручную удалить созданные ранее папку 'SmartPit_Users' или файл 'Template_SmartPit_Sheet' из вашего Google Drive и запустить функцию снова.");
   }
 }
+
+/**
+ * Устанавливает ключ Gemini API в свойствах проекта (ScriptProperties).
+ * Этот ключ будет использоваться для доступа к Gemini API.
+ *
+ * @param {string} apiKey Ваш ключ Gemini API.
+ */
+function setGeminiApiKey(apiKey) {
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+    Logger.log('❌ Ошибка: Ключ Gemini API не может быть пустым.');
+    return;
+  }
+  PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', apiKey);
+  Logger.log('✅ Ключ Gemini API успешно сохранен в ScriptProperties.');
+}
