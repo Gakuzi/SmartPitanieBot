@@ -243,6 +243,7 @@
 
   <script>
     const TIMEOUT_DURATION = 30000; // 30 секунд
+    let requestTimeoutId = null;
 
     const loader = document.getElementById('loader');
     const loaderStatus = document.getElementById('loaderStatus');
@@ -279,6 +280,7 @@
     }
 
     function hideLoader() {
+        if (requestTimeoutId) clearTimeout(requestTimeoutId);
         loader.classList.add('hidden');
         mainContent.classList.remove('hidden');
     }
@@ -328,91 +330,86 @@
         }
     }
 
-    function handleTimeout() {
-        logToServer('Client-side timeout reached.');
+    function handleTimeout(functionName) {
+        logToServer(`Client-side timeout reached for function: ${functionName}`);
         hideLoader();
         const timeoutAnalysis = {
             status: 'CRITICAL',
             summary: 'Сервер не отвечает (Тайм-аут)',
-            details: `Ваш запрос к серверу Google Apps Script занял слишком много времени (${TIMEOUT_DURATION / 1000} секунд) и был прерван. Это может произойти по нескольким причинам.`,
+            details: `Ваш запрос к серверу Google Apps Script (${functionName}) занял слишком много времени и был прерван. Это может произойти по нескольким причинам.`,
             solution: `1. **Проверьте API ключи:** Неправильный или неактивный ключ Gemini API может вызывать бесконечное ожидание.\n2. **Проверьте логи выполнения:** Откройте ваш проект в Apps Script, перейдите в раздел \"Выполнения\" и посмотрите, нет ли там ошибок, которые мешают скрипту завершиться.\n3. **Проблемы с сетью Google:** Иногда сервисы Google могут работать медленно. Попробуйте повторить запрос через несколько минут.`
         };
         updateStatusPanel(timeoutAnalysis);
     }
 
-    function runServerFunctionWithTimeout(functionName, ...args) {
-        return new Promise((resolve, reject) => {
-            logToServer(`Calling server function: ${functionName}`);
-            const serverCall = new Promise((res, rej) => {
-                google.script.run
-                    .withSuccessHandler(res)
-                    .withFailureHandler(rej)
-                    [functionName](...args);
-            });
+    function runServerFunction(functionName, ...args) {
+        logToServer(`Calling server function: ${functionName}`);
+        
+        // Устанавливаем тайм-аут
+        requestTimeoutId = setTimeout(() => handleTimeout(functionName), TIMEOUT_DURATION);
 
-            const timeout = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('timeout')), TIMEOUT_DURATION);
-            });
-
-            Promise.race([serverCall, timeout])
-                .then(response => {
-                    logToServer(`Server function ${functionName} responded.`);
-                    resolve(response);
-                })
-                .catch(error => {
-                    logToServer(`Server function ${functionName} failed or timed out. Error: ${error.message}`);
-                    reject(error);
-                });
-        });
+        google.script.run
+            .withSuccessHandler(response => {
+                clearTimeout(requestTimeoutId);
+                logToServer(`Server function ${functionName} responded successfully.`);
+                // Теперь обработка успеха находится здесь
+                if (functionName === 'getWebhookStatusForDialog') {
+                    handleLoadSuccess(response);
+                } else {
+                    handleActionSuccess(response);
+                }
+            })
+            .withFailureHandler(error => {
+                clearTimeout(requestTimeoutId);
+                logToServer(`Server function ${functionName} failed. Error: ${error.message}`);
+                // Обработка ошибки
+                handleLoadFailure(error);
+            })
+            [functionName](...args);
     }
 
-    async function loadWebhookInfo() {
-        showLoader('Получение статуса вебхука...');
-        showMessage('', 'hidden');
-        try {
-            const response = await runServerFunctionWithTimeout('getWebhookStatusForDialog');
-            editorUrl = response.editorUrl;
-            if (response.ok) {
-                autoUrl = response.webAppUrl;
-                autoWebAppUrlElem.textContent = autoUrl;
-                updateStatusPanel(response.analysis);
-                deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
-            } else {
-                updateStatusPanel(response.analysis);
-            }
-        } catch (error) {
-            if (error.message === 'timeout') {
-                handleTimeout();
-            } else {
-                const errorAnalysis = {
-                    status: 'CRITICAL',
-                    summary: 'Критическая ошибка клиента',
-                    details: `Произошла непредвиденная ошибка на стороне клиента: ${error.message}`,
-                    solution: 'Эта ошибка для разработчика. Пожалуйста, используйте инструменты ниже для отладки.'
-                };
-                updateStatusPanel(errorAnalysis);
-            }
+    function handleLoadSuccess(response) {
+        editorUrl = response.editorUrl;
+        if (response.ok) {
+            autoUrl = response.webAppUrl;
+            autoWebAppUrlElem.textContent = autoUrl;
+            updateStatusPanel(response.analysis);
+            deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
+        } else {
+            updateStatusPanel(response.analysis);
         }
         hideLoader();
     }
 
-    async function handleAction(actionFunction, ...args) {
-        showLoader('Выполнение операции на сервере...');
-        try {
-            const result = await runServerFunctionWithTimeout(actionFunction, ...args);
-            if (result.ok) {
-                showMessage('Операция успешно выполнена! Перезагружаю статус...', 'success');
-            } else {
-                showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
-            }
-        } catch (error) {
-            if (error.message === 'timeout') {
-                handleTimeout();
-            } else {
-                showMessage(`Критическая ошибка: ${error.message}`, 'error');
-            }
+    function handleActionSuccess(result) {
+        if (result.ok) {
+            showMessage('Операция успешно выполнена! Перезагружаю статус...', 'success');
+        } else {
+            showMessage(`Ошибка: ${result.description || 'Неизвестная серверная ошибка.'}`, 'error');
         }
         loadWebhookInfo(); // Always reload
+    }
+
+    function handleLoadFailure(error) {
+        const errorAnalysis = {
+            status: 'CRITICAL',
+            summary: 'Критическая ошибка клиента',
+            details: `Произошла непредвиденная ошибка на стороне клиента: ${error.message}`,
+            solution: 'Эта ошибка для разработчика. Пожалуйста, используйте инструменты ниже для отладки.'
+        };
+        updateStatusPanel(errorAnalysis);
+        hideLoader();
+    }
+
+    function loadWebhookInfo() {
+        showLoader('Получение статуса вебхука...');
+        showMessage('', 'hidden');
+        runServerFunction('getWebhookStatusForDialog');
+    }
+
+    function handleAction(actionFunction, ...args) {
+        showLoader('Выполнение операции на сервере...');
+        runServerFunction(actionFunction, ...args);
     }
 
     setWebhookBtn.addEventListener('click', function() {
