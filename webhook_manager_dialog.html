@@ -225,9 +225,7 @@
 
         <div class="url-section">
             <strong>URL Веб-приложения</strong>
-            <p>Автоматически определенный URL:</p>
-            <code id="autoWebAppUrl">-</code>
-            <p>Если URL выше неверен или вы хотите использовать другой, введите его сюда:</p>
+            <p>Введите URL вашего развернутого веб-приложения:</p>
             <input type="text" id="manualWebhookUrl" placeholder="https://script.google.com/macros/s/ваше_id/exec">
         </div>
 
@@ -257,7 +255,7 @@
     const rawTelegramData = document.getElementById('rawTelegramData');
     const devLinksSection = document.getElementById('dev-links-section');
     const gasEditorLink = document.getElementById('gas-editor-link');
-    const autoWebAppUrlElem = document.getElementById('autoWebAppUrl');
+    const vscodeLink = document.getElementById('vscode-link');
     const manualWebhookUrlInput = document.getElementById('manualWebhookUrl');
     const setWebhookBtn = document.getElementById('setWebhookBtn');
     const deleteWebhookBtn = document.getElementById('deleteWebhookBtn');
@@ -338,7 +336,7 @@
             .withSuccessHandler(response => {
                 if (response.ok) {
                     basicInfo = response;
-                    autoWebAppUrlElem.textContent = response.webAppUrl || "Не удалось определить";
+                    manualWebhookUrlInput.value = response.rawInfo.url || '';
                     rawTelegramData.textContent = JSON.stringify(response.rawInfo, null, 2);
                     deleteWebhookBtn.style.display = response.rawInfo && response.rawInfo.url ? 'inline-block' : 'none';
                     statusPanel.classList.add('warning');
@@ -356,6 +354,11 @@
     }
 
     function runAiAnalysis() {
+        const manualUrl = manualWebhookUrlInput.value.trim();
+        if (!manualUrl) {
+            showMessage('URL для анализа не найден. Введите его вручную.', 'error');
+            return;
+        }
         showLoader('Запуск AI-анализа... Это может занять до 30 секунд.');
         google.script.run
             .withSuccessHandler(response => {
@@ -367,7 +370,7 @@
                 hideLoader();
             })
             .withFailureHandler(err => handleFailure(err, 'AI-анализ'))
-            .getAiAnalysis(basicInfo);
+            .getAiAnalysis({ ...basicInfo, webAppUrl: manualUrl });
     }
 
     function handleAction(actionFunction, ...args) {
@@ -391,12 +394,11 @@
     // --- Event Listeners ---
     setWebhookBtn.addEventListener('click', () => {
       const manualUrl = manualWebhookUrlInput.value.trim();
-      const finalUrl = manualUrl || autoWebAppUrlElem.textContent;
-      if (!finalUrl || finalUrl === 'Не удалось определить') {
+      if (!manualUrl) {
           showMessage('URL для установки не найден. Введите его вручную.', 'error');
           return;
       }
-      handleAction('setWebhookFromDialog', finalUrl);
+      handleAction('setWebhookFromDialog', manualUrl);
     });
 
     deleteWebhookBtn.addEventListener('click', () => handleAction('deleteWebhookFromDialog'));

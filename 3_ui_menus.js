@@ -46,20 +46,17 @@ function showWebhookManagerDialog() {
  * @returns {object} - Объект с базовой информацией.
  */
 function getBasicWebhookInfo() {
-  let webAppUrl = '';
   let webhookInfo = {};
   const editorUrl = `https://script.google.com/d/${ScriptApp.getScriptId()}/edit`;
   const localPath = PropertiesService.getScriptProperties().getProperty('LOCAL_PROJECT_PATH');
 
   try {
-    webAppUrl = ScriptApp.getService().getUrl();
     webhookInfo = getTelegramWebhookInfo();
     if (!webhookInfo.ok) {
       throw new Error(webhookInfo.description || 'Неизвестная ошибка Telegram API.');
     }
     return {
       ok: true,
-      webAppUrl: webAppUrl,
       editorUrl: editorUrl,
       localPath: localPath,
       rawInfo: webhookInfo.result || {},
