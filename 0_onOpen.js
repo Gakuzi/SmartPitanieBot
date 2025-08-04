@@ -20,7 +20,7 @@ function onOpen() {
   
   // Добавляем подменю "Управление вебхуком"
   apiMenu.addSeparator()
-         .addItem('Управление вебхуком', 'manageWebhook')
+         .addItem('Управление вебхуком', 'showWebhookManagerDialog')
          .addToUi();
 }
 
@@ -74,11 +74,4 @@ function promptAndSetGeminiApiKey() {
   } else {
     ui.alert('Установка/изменение ключа отменено.');
   }
-}
-
-/**
- * Пошаговый мастер для управления вебхуком Telegram.
- */
-function manageWebhook() {
-  showWebhookManagerDialog();
 }
