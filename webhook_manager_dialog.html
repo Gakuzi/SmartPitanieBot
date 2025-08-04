@@ -219,7 +219,6 @@
                 <h3>Инструменты разработчика</h3>
                 <div class="dev-links">
                     <a id="gas-editor-link" href="#" target="_blank">Открыть в Apps Script</a>
-                    <a id="vscode-link" href="#">Открыть в VS Code</a>
                 </div>
             </div>
         </div>
@@ -258,7 +257,6 @@
     const rawTelegramData = document.getElementById('rawTelegramData');
     const devLinksSection = document.getElementById('dev-links-section');
     const gasEditorLink = document.getElementById('gas-editor-link');
-    const vscodeLink = document.getElementById('vscode-link');
     const autoWebAppUrlElem = document.getElementById('autoWebAppUrl');
     const manualWebhookUrlInput = document.getElementById('manualWebhookUrl');
     const setWebhookBtn = document.getElementById('setWebhookBtn');
@@ -313,7 +311,6 @@
         if (analysis.status !== 'OK') {
             devLinksSection.classList.remove('hidden');
             gasEditorLink.href = basicInfo.editorUrl;
-            vscodeLink.href = `vscode://file/${basicInfo.editorUrl}`;
         }
     }
 
