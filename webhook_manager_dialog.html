@@ -302,10 +302,12 @@
             return;
         }
         root.innerHTML = renderLoader('Запуск AI-анализа... Это может занять до 30 секунд.');
+        const analysisData = { ...globalBasicInfo, webAppUrl: manualUrl };
         google.script.run
             .withSuccessHandler(response => {
                 if (response.ok) {
-                    const newBasicInfo = { ...globalBasicInfo, rawInfo: { ...globalBasicInfo.rawInfo, url: manualUrl } };
+                    // Use the fresh basicInfo from the server response if available
+                    const newBasicInfo = response.basicInfo || analysisData;
                     root.innerHTML = renderMainContent({ analysis: response.analysis, basicInfo: newBasicInfo });
                     bindEventListeners();
                 } else {
@@ -313,7 +315,7 @@
                 }
             })
             .withFailureHandler(err => handleFailure(err, 'AI-анализ'))
-            .getAiAnalysis({ ...globalBasicInfo, webAppUrl: manualUrl });
+            .getAiAnalysis(analysisData);
     }
 
     function handleAction(actionFunction, ...args) {
