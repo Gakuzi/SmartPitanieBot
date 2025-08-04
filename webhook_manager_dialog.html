@@ -218,7 +218,7 @@
               2. Следуйте официальной инструкции по развертыванию веб-приложения.<br>
               3. Вставьте URL ниже и нажмите "Установить / Обновить".
             </p>
-            <input type="text" id="manualWebhookUrl" placeholder="https://script.google.com/macros/s/ваше_id/exec" value="${basicInfo.rawInfo.url || ''}">
+            <input type="text" id="manualWebhookUrl" placeholder="https://script.google.com/macros/s/ваше_id/exec" value="">
         </div>
 
         <div class="button-group">
@@ -296,18 +296,24 @@
     }
 
     function runAiAnalysis() {
+        const manualUrl = document.getElementById('manualWebhookUrl').value.trim();
+        if (!manualUrl) {
+            showMessage('URL для анализа не найден. Введите его вручную.', 'error');
+            return;
+        }
         root.innerHTML = renderLoader('Запуск AI-анализа... Это может занять до 30 секунд.');
         google.script.run
             .withSuccessHandler(response => {
                 if (response.ok) {
-                    root.innerHTML = renderMainContent({ analysis: response.analysis, basicInfo: globalBasicInfo });
+                    const newBasicInfo = { ...globalBasicInfo, rawInfo: { ...globalBasicInfo.rawInfo, url: manualUrl } };
+                    root.innerHTML = renderMainContent({ analysis: response.analysis, basicInfo: newBasicInfo });
                     bindEventListeners();
                 } else {
                     handleFailure(new Error(response.error), 'AI-анализ');
                 }
             })
             .withFailureHandler(err => handleFailure(err, 'AI-анализ'))
-            .getAiAnalysis(globalBasicInfo);
+            .getAiAnalysis({ ...globalBasicInfo, webAppUrl: manualUrl });
     }
 
     function handleAction(actionFunction, ...args) {
