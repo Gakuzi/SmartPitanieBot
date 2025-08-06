@@ -1,31 +1,9 @@
-# Google Apps Script
-.clasp.json
-.claspignore
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Temporary files
+node_modules/
 *.tmp
 *.temp
-
-# Environment variables
+*.log
+.clasp.json
+.claspignore
 .env
-.env.local
-
-# Node modules (if any)
-node_modules/
-
-# Build files
-dist/
-build/ 
+.DS_Store
+Thumbs.db 
