@@ -1,0 +1,42 @@
+{
+  "name": "smartpit",
+  "version": "2.0.0",
+  "description": "Умный ассистент для питания и финансов - Telegram бот на Google Apps Script",
+  "main": "sync_with_google.js",
+  "scripts": {
+    "sync": "node sync_with_google.js",
+    "push": "node sync_with_google.js push",
+    "pull": "node sync_with_google.js pull",
+    "setup": "node sync_with_google.js setup",
+    "status": "node sync_with_google.js status",
+    "install-clasp": "npm install -g @google/clasp",
+    "login": "clasp login",
+    "deploy": "clasp deploy",
+    "open": "clasp open",
+    "logs": "clasp logs"
+  },
+  "keywords": [
+    "telegram-bot",
+    "google-apps-script",
+    "nutrition",
+    "finance",
+    "ai",
+    "smart-assistant"
+  ],
+  "author": "SmartPit Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/smartpit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/smartpit/issues"
+  },
+  "homepage": "https://github.com/your-username/smartpit#readme",
+  "devDependencies": {
+    "@google/clasp": "^2.4.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+} 
