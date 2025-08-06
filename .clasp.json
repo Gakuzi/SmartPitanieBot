@@ -1,6 +1,7 @@
 {
-  "scriptId": "13jwxQFwGaK_nS23fWMtP8XH6oxfZHqE4VbTx6O8gulZKo4ojC_J8y6A6",
-  "rootDir": ".",
+  "scriptId": "1FfUK-STUyotU5tiqBvNs0Ia9gMuwp_ohoJbES5CPsmh3xA5uLsdflk-9",
+  "rootDir": "",
+  "projectId": "klimov-evgeny",
   "scriptExtensions": [
     ".js",
     ".gs"
@@ -11,6 +12,5 @@
   "jsonExtensions": [
     ".json"
   ],
-  "filePushOrder": [],
-  "skipSubdirectories": false
+  "filePushOrder": []
 }
