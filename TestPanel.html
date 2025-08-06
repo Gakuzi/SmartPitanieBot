@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <title>SmartPitanieBot - Панель тестирования</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .test-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .test-body {
+            padding: 20px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #56CCF2, #2F80ED);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(45deg, #F093FB, #F5576C);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #FF416C, #FF4B2B);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .results {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-success { background-color: #28a745; }
+        .status-warning { background-color: #ffc107; }
+        .status-error { background-color: #dc3545; }
+        .status-info { background-color: #17a2b8; }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 SmartPitanieBot</h1>
+            <p>Панель автоматического тестирования и диагностики</p>
+        </div>
+        
+        <div class="content">
+            <!-- Статистика -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalTests">0</div>
+                    <div class="stat-label">Всего тестов</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="passedTests">0</div>
+                    <div class="stat-label">Пройдено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="failedTests">0</div>
+                    <div class="stat-label">Провалено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="successRate">0%</div>
+                    <div class="stat-label">Процент успеха</div>
+                </div>
+            </div>
+            
+            <!-- Основное тестирование -->
+            <div class="test-section">
+                <div class="test-header">
+                    <span class="status-indicator status-info"></span>
+                    Полное тестирование системы
+                </div>
+                <div class="test-body">
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="runFullTest()">
+                            🚀 Запустить полное тестирование
+                        </button>
+                        <button class="btn btn-success" onclick="runQuickTest()">
+                            ⚡ Быстрый тест
+                        </button>
+                    </div>
+                    <div class="results" id="fullTestResults"></div>
+                </div>
+            </div>
+            
+            <!-- Диагностика и исправление листов -->
+            <div class="test-section">
+                <div class="test-header">
+                    <span class="status-indicator status-warning"></span>
+                    Диагностика и исправление системы листов
+                </div>
+                <div class="test-body">
+                    <div class="button-group">
+                        <button class="btn btn-warning" onclick="diagnoseSheetsSystem()">
+                            🔧 Диагностика листов
+                        </button>
+                        <button class="btn btn-danger" onclick="repairSheetsSystem()">
+                            🛠️ Исправить систему листов
+                        </button>
+                        <button class="btn btn-success" onclick="testSheetCreation()">
+                            📊 Тест создания листов
+                        </button>
+                    </div>
+                    <div class="results" id="sheetsTestResults"></div>
+                </div>
+            </div>
+            
+            <!-- Тестирование компонентов -->
+            <div class="test-section">
+                <div class="test-header">
+                    <span class="status-indicator status-success"></span>
+                    Тестирование отдельных компонентов
+                </div>
+                <div class="test-body">
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="testTelegramAPI()">
+                            📱 Telegram API
+                        </button>
+                        <button class="btn btn-primary" onclick="testGoogleSheets()">
+                            📊 Google Sheets
+                        </button>
+                        <button class="btn btn-primary" onclick="testUserSystem()">
+                            👥 Система пользователей
+                        </button>
+                        <button class="btn btn-primary" onclick="testUISystem()">
+                            🎨 UI система
+                        </button>
+                        <button class="btn btn-primary" onclick="testGeminiAI()">
+                            🤖 Gemini AI
+                        </button>
+                    </div>
+                    <div class="results" id="componentTestResults"></div>
+                </div>
+            </div>
+            
+            <!-- Настройка и конфигурация -->
+            <div class="test-section">
+                <div class="test-header">
+                    <span class="status-indicator status-info"></span>
+                    Настройка и конфигурация
+                </div>
+                <div class="test-body">
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="setupInfrastructure()">
+                            🏗️ Создать инфраструктуру
+                        </button>
+                        <button class="btn btn-warning" onclick="checkConfiguration()">
+                            ⚙️ Проверить конфигурацию
+                        </button>
+                        <button class="btn btn-primary" onclick="showLogs()">
+                            📋 Показать логи
+                        </button>
+                    </div>
+                    <div class="results" id="configResults"></div>
+                </div>
+            </div>
+            
+            <!-- Загрузка -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Выполняется тестирование...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Показать/скрыть загрузку
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        // Обновить статистику
+        function updateStats(results) {
+            if (results && results.tests) {
+                document.getElementById('totalTests').textContent = results.tests.length;
+                document.getElementById('passedTests').textContent = results.passed || 0;
+                document.getElementById('failedTests').textContent = results.failed || 0;
+                
+                const successRate = results.tests.length > 0 ? 
+                    Math.round((results.passed / results.tests.length) * 100) : 0;
+                document.getElementById('successRate').textContent = successRate + '%';
+            }
+        }
+        
+        // Полное тестирование
+        function runFullTest() {
+            showLoading();
+            const resultsDiv = document.getElementById('fullTestResults');
+            resultsDiv.innerHTML = '🚀 Запуск полного тестирования системы...\n';
+            
+            google.script.run
+                .withSuccessHandler(function(results) {
+                    hideLoading();
+                    resultsDiv.innerHTML = formatTestResults(results);
+                    updateStats(results);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    resultsDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                })
+                .runFullSystemTest();
+        }
+        
+        // Быстрый тест
+        function runQuickTest() {
+            showLoading();
+            const resultsDiv = document.getElementById('fullTestResults');
+            resultsDiv.innerHTML = '⚡ Запуск быстрого теста...\n';
+            
+            // Быстрый тест основных компонентов
+            google.script.run
+                .withSuccessHandler(function(results) {
+                    hideLoading();
+                    resultsDiv.innerHTML = formatTestResults(results);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    resultsDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                })
+                .testConfiguration();
+        }
+        
+        // Диагностика системы листов
+        function diagnoseSheetsSystem() {
+            showLoading();
+            const resultsDiv = document.getElementById('sheetsTestResults');
+            resultsDiv.innerHTML = '🔧 Диагностика системы листов...\n';
+            
+            google.script.run
+                .withSuccessHandler(function(results) {
+                    hideLoading();
+                    resultsDiv.innerHTML = formatRepairResults(results);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    resultsDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                })
+                .diagnoseAndRepairSheetsSystem();
+        }
+        
+        // Исправление системы листов
+        function repairSheetsSystem() {
+            if (!confirm('Вы уверены, что хотите исправить систему листов? Это может изменить существующие данные.')) {
+                return;
+            }
+            
+            showLoading();
+            const resultsDiv = document.getElementById('sheetsTestResults');
+            resultsDiv.innerHTML = '🛠️ Исправление системы листов...\n';
+            
+            google.script.run
+                .withSuccessHandler(function(results) {
+                    hideLoading();
+                    resultsDiv.innerHTML = formatRepairResults(results);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    resultsDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                })
+                .diagnoseAndRepairSheetsSystem();
+        }
+        
+        // Тест создания листов
+        function testSheetCreation() {
+            showLoading();
+            const resultsDiv = document.getElementById('sheetsTestResults');
+            resultsDiv.innerHTML = '📊 Тестирование создания листов...\n';
+            
+            google.script.run
+                .withSuccessHandler(function(results) {
+                    hideLoading();
+                    resultsDiv.innerHTML = formatTestResults(results);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    resultsDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                })
+                .testUserSheetCreation();
+        }
+        
+        // Тестирование компонентов
+        function testTelegramAPI() {
+            runComponentTest('testTelegramAPI', 'Telegram API');
+        }
+        
+        function testGoogleSheets() {
+            runComponentTest('testSheetsSystem', 'Google Sheets');
+        }
+        
+        function testUserSystem() {
+            runComponentTest('testUserDataSystem', 'Система пользователей');
+        }
+        
+        function testUISystem() {
+            runComponentTest('testUISystem', 'UI система');
+        }
+        
+        function testGeminiAI() {
+            runComponentTest('testGeminiAPI', 'Gemini AI');
+        }
+        
+        function runComponentTest(functionName, componentName) {
+            showLoading();
+            const resultsDiv = document.getElementById('componentTestResults');
+            resultsDiv.innerHTML = `🧪 Тестирование ${componentName}...\n`;
+            
+            google.script.run
+                .withSuccessHandler(function(results) {
+                    hideLoading();
+                    resultsDiv.innerHTML = formatTestResults(results);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    resultsDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                })
+                [functionName]();
+        }
+        
+        // Настройка инфраструктуры
+        function setupInfrastructure() {
+            if (!confirm('Создать инфраструктуру проекта? Это создаст папки и таблицы в Google Drive.')) {
+                return;
+            }
+            
+            showLoading();
+            const resultsDiv = document.getElementById('configResults');
+            resultsDiv.innerHTML = '🏗️ Создание инфраструктуры...\n';
+            
+            google.script.run
+                .withSuccessHandler(function(results) {
+                    hideLoading();
+                    resultsDiv.innerHTML = '✅ Инфраструктура создана успешно!\n' + results;
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    resultsDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                })
+                .setupProjectInfrastructure();
+        }
+        
+        // Проверка конфигурации
+        function checkConfiguration() {
+            showLoading();
+            const resultsDiv = document.getElementById('configResults');
+            resultsDiv.innerHTML = '⚙️ Проверка конфигурации...\n';
+            
+            google.script.run
+                .withSuccessHandler(function(results) {
+                    hideLoading();
+                    resultsDiv.innerHTML = formatTestResults(results);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    resultsDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                })
+                .testConfiguration();
+        }
+        
+        // Показать логи
+        function showLogs() {
+            const resultsDiv = document.getElementById('configResults');
+            resultsDiv.innerHTML = '📋 Для просмотра логов откройте Google Apps Script Editor > Выполнение > Журнал выполнения\n\n';
+            resultsDiv.innerHTML += '🔗 Ссылка на проект: https://script.google.com/d/13jwxQFwGaK_nS23fWMtP8XH6oxfZHqE4VbTx6O8gulZKo4ojC_J8y6A6/edit\n';
+        }
+        
+        // Форматирование результатов тестов
+        function formatTestResults(results) {
+            if (!results) return '❌ Нет результатов';
+            
+            let output = `📊 Результаты тестирования:\n`;
+            output += `✅ Успешно: ${results.passed || 0}\n`;
+            output += `❌ Провалено: ${results.failed || 0}\n`;
+            
+            if (results.message) {
+                output += `📝 Сообщение: ${results.message}\n`;
+            }
+            
+            if (results.details && results.details.length > 0) {
+                output += `\n📋 Детали:\n`;
+                results.details.forEach(detail => {
+                    output += `   ${detail}\n`;
+                });
+            }
+            
+            if (results.tests && results.tests.length > 0) {
+                output += `\n🧪 Результаты тестов:\n`;
+                results.tests.forEach((test, index) => {
+                    output += `   ${index + 1}. ${test.name}: ${test.passed ? '✅' : '❌'}\n`;
+                    if (test.message) {
+                        output += `      ${test.message}\n`;
+                    }
+                });
+            }
+            
+            return output;
+        }
+        
+        // Форматирование результатов исправления
+        function formatRepairResults(results) {
+            if (!results) return '❌ Нет результатов';
+            
+            let output = `🔧 Результаты диагностики и исправления:\n`;
+            output += `📊 Статус: ${results.success ? '✅ УСПЕШНО' : '❌ С ОШИБКАМИ'}\n\n`;
+            
+            if (results.steps && results.steps.length > 0) {
+                output += `📋 Выполненные шаги:\n`;
+                results.steps.forEach((step, index) => {
+                    output += `   ${index + 1}. ${step}\n`;
+                });
+            }
+            
+            if (results.repaired && results.repaired.length > 0) {
+                output += `\n🔧 Исправления:\n`;
+                results.repaired.forEach(action => {
+                    output += `   ${action}\n`;
+                });
+            }
+            
+            if (results.errors && results.errors.length > 0) {
+                output += `\n❌ Ошибки:\n`;
+                results.errors.forEach(error => {
+                    output += `   ${error}\n`;
+                });
+            }
+            
+            return output;
+        }
+        
+        // Автоматическое обновление статистики при загрузке
+        window.onload = function() {
+            // Можно добавить автоматическую загрузку статистики
+        };
+    </script>
+</body>
+</html>

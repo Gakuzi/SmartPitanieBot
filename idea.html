@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartPit v2 - Интерактивное представление идей</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --warning: #fca311;
+            --danger: #e63946;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #8d99ae;
+            --gray-light: #edf2f4;
+            --border-radius: 12px;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: var(--gray);
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 30px;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--gray-light);
+        }
+
+        .card-header i {
+            font-size: 2rem;
+            color: var(--primary);
+        }
+
+        .card-header h3 {
+            font-size: 1.5rem;
+            color: var(--dark);
+        }
+
+        .idea-item {
+            background: var(--gray-light);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .idea-item h4 {
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .idea-item p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .task-form {
+            background: var(--light);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--gray-light);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: var(--transition);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, var(--success), #2F80ED);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, var(--warning), #F5576C);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .task-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            background: white;
+            border: 1px solid var(--gray-light);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            transition: var(--transition);
+        }
+
+        .task-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .task-title {
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .task-priority {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .priority-high {
+            background: var(--danger);
+            color: white;
+        }
+
+        .priority-medium {
+            background: var(--warning);
+            color: white;
+        }
+
+        .priority-low {
+            background: var(--success);
+            color: white;
+        }
+
+        .task-description {
+            color: var(--gray);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .mermaid {
+            background: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin: 20px 0;
+            overflow: auto;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .comparison-table th, 
+        .comparison-table td {
+            border: 1px solid var(--gray-light);
+            padding: 12px;
+            text-align: left;
+        }
+
+        .comparison-table th {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background-color: var(--light);
+        }
+
+        .advantage {
+            background-color: #d5f5e3;
+            border-left: 4px solid var(--success);
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .disadvantage {
+            background-color: #fadbd8;
+            border-left: 4px solid var(--danger);
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-lightbulb"></i> SmartPit v2</h1>
+            <p>Интерактивное представление идей и управление проектом</p>
+        </div>
+
+        <div class="content-grid">
+            <!-- Карточка с идеями -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-lightbulb"></i>
+                    <h3>Основные идеи проекта</h3>
+                </div>
+                
+                <div class="idea-item">
+                    <h4>🎯 Цель проекта</h4>
+                    <p>Создать умного, надёжного и масштабируемого ассистента для питания и личных финансов, работающего через Telegram и Google Таблицы.</p>
+                </div>
+
+                <div class="idea-item">
+                    <h4>🔑 Сохранённая идеология</h4>
+                    <ul>
+                        <li>Помогает в питании и бюджете — облегчает рутину</li>
+                        <li>Данные в Google Таблице — приватность, персонализация, контроль</li>
+                        <li>AI — только для генерации — не для рутины</li>
+                        <li>Интерфейс — Telegram-бот — с кнопками, меню, форматированными сообщениями</li>
+                        <li>Минимум сложностей — пользователь не должен настраивать сложные системы</li>
+                    </ul>
+                </div>
+
+                <div class="idea-item">
+                    <h4>🔄 Что изменено</h4>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Было</th>
+                            <th>Стало</th>
+                        </tr>
+                        <tr>
+                            <td>Линейная структура</td>
+                            <td>Модульная, событийно-ориентированная</td>
+                        </tr>
+                        <tr>
+                            <td>Нет управления состоянием</td>
+                            <td>Добавлен state.js для сессий</td>
+                        </tr>
+                        <tr>
+                            <td>Жёсткая привязка к AI</td>
+                            <td>Гибкий ai/adapter.js</td>
+                        </tr>
+                        <tr>
+                            <td>Ручной CRUD</td>
+                            <td>Универсальный sheets/crud.js</td>
+                        </tr>
+                        <tr>
+                            <td>Сложное расширение</td>
+                            <td>Простое: добавь модуль — заработает</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Карточка управления задачами -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-tasks"></i>
+                    <h3>Управление задачами</h3>
+                </div>
+
+                <div class="task-form">
+                    <h4>➕ Добавить новую задачу</h4>
+                    <form id="taskForm">
+                        <div class="form-group">
+                            <label for="taskTitle">Название задачи</label>
+                            <input type="text" id="taskTitle" placeholder="Введите название задачи" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taskDescription">Описание</label>
+                            <textarea id="taskDescription" rows="3" placeholder="Опишите задачу подробно"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taskPriority">Приоритет</label>
+                            <select id="taskPriority">
+                                <option value="Низкий">Низкий</option>
+                                <option value="Средний" selected>Средний</option>
+                                <option value="Высокий">Высокий</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taskAssignee">Исполнитель</label>
+                            <input type="text" id="taskAssignee" placeholder="Кто будет выполнять задачу">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taskDeadline">Дедлайн</label>
+                            <input type="date" id="taskDeadline">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Добавить задачу
+                        </button>
+                    </form>
+                </div>
+
+                <div class="task-list" id="taskList">
+                    <!-- Задачи будут загружены здесь -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Карточка с архитектурой -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-sitemap"></i>
+                <h3>Новая структура проекта</h3>
+            </div>
+            
+            <pre><code>SmartPit/
+├── core/
+│   ├── router.js            # Единый роутер команд и событий
+│   ├── state.js             # Управление состоянием пользователя
+│   └── logger.js            # Централизованное логирование
+│
+├── modules/
+│   ├── telegram/            # Работа с Telegram
+│   │   ├── api.js           # Отправка/приём
+│   │   └── keyboard.js      # Генерация кнопок
+│   │
+│   ├── sheets/              # Работа с Google Sheets
+│   │   ├── crud.js          # Универсальный CRUD
+│   │   └── schema.js        # Структура таблиц
+│   │
+│   ├── ai/                  # Взаимодействие с ИИ
+│   │   ├── prompt.js        # Готовые промпты
+│   │   └── adapter.js       # Обёртка для Gemini/OpenRouter
+│   │
+│   ├── offline/             # Офлайн-команды
+│   │   ├── menu.js          # /get_menu
+│   │   ├── purchases.js     # /show_purchases
+│   │   └── budget.js        # /my_budget
+│   │
+│   └── online/              # Онлайн-команды
+│       ├── generate_menu.js # /create_new_menu
+│       └── ask_ai.js        # /ask_ai
+│
+├── utils/
+│   ├── markdown.js          # Экранирование MarkdownV2
+│   └── helpers.js           # Вспомогательные функции
+│
+├── main.js                  # Точка входа (doPost)
+├── config.js                # Настройки
+└── PROJECT_PLAN.md          # Автообновляемый план</code></pre>
+        </div>
+
+        <!-- Карточка с диаграммой -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-project-diagram"></i>
+                <h3>Схема взаимодействия модулей</h3>
+            </div>
+            
+            <div class="mermaid">
+                graph TD
+                    A[Telegram] -->|1. Сообщение| B[main.js]
+                    B -->|2. Парсинг| C[core/router.js]
+                    C -->|3. Определение типа| D{message / callback?}
+                    
+                    D -->|message| E{Команда?}
+                    D -->|callback_query| F[core/state.js → обработка]
+
+                    E -->|/start, /menu| G[modules/offline/menu.js]
+                    E -->|/create_new_menu| H[modules/online/generate_menu.js]
+                    E -->|/ask_ai| I[modules/online/ask_ai.js]
+
+                    G -->|Чтение данных| J[modules/sheets/crud.js]
+                    H -->|Генерация| K[modules/ai/adapter.js]
+                    I -->|Запрос к AI| K
+
+                    J -->|Google Sheets| L[(База данных)]
+                    K -->|Gemini/OpenRouter| M[AI API]
+
+                    F -->|Обновление состояния| N[core/state.js]
+                    N -->|Сохранение| L
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация Mermaid
+        mermaid.initialize({ startOnLoad: true });
+
+        // Загрузка задач при загрузке страницы
+        window.onload = function() {
+            loadTasks();
+        };
+
+        // Обработка формы добавления задачи
+        document.getElementById('taskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const taskData = {
+                name: document.getElementById('taskTitle').value,
+                description: document.getElementById('taskDescription').value,
+                priority: document.getElementById('taskPriority').value,
+                assignee: document.getElementById('taskAssignee').value,
+                deadline: document.getElementById('taskDeadline').value
+            };
+            
+            addTask(taskData);
+            
+            // Очищаем форму
+            document.getElementById('taskForm').reset();
+        });
+
+        // Функция добавления задачи
+        function addTask(taskData) {
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    if (result.success) {
+                        showMessage('✅ Задача добавлена успешно!');
+                        loadTasks(); // Перезагружаем список задач
+                    } else {
+                        showMessage('❌ Ошибка при добавлении задачи: ' + result.error);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    showMessage('❌ Ошибка: ' + error.message);
+                })
+                .addNewTask(taskData);
+        }
+
+        // Функция загрузки задач
+        function loadTasks() {
+            google.script.run
+                .withSuccessHandler(function(data) {
+                    displayTasks(data.tasks || []);
+                })
+                .withFailureHandler(function(error) {
+                    showMessage('❌ Ошибка загрузки задач: ' + error.message);
+                })
+                .getProjectData();
+        }
+
+        // Функция отображения задач
+        function displayTasks(tasks) {
+            const taskList = document.getElementById('taskList');
+            
+            if (tasks.length === 0) {
+                taskList.innerHTML = '<p style="text-align: center; color: var(--gray);">Нет активных задач</p>';
+                return;
+            }
+            
+            let html = '';
+            tasks.forEach(task => {
+                const priorityClass = task.priority === 'Высокий' ? 'priority-high' : 
+                                    task.priority === 'Средний' ? 'priority-medium' : 'priority-low';
+                
+                html += `
+                    <div class="task-item">
+                        <div class="task-header">
+                            <div class="task-title">${task.name}</div>
+                            <span class="task-priority ${priorityClass}">${task.priority}</span>
+                        </div>
+                        <div class="task-description">${task.description || 'Описание отсутствует'}</div>
+                        <div class="task-meta">
+                            <span><i class="fas fa-user"></i> ${task.assignee || 'Не назначен'}</span>
+                            <span><i class="fas fa-calendar"></i> ${task.deadline || 'Дедлайн не установлен'}</span>
+                            <span><i class="fas fa-chart-line"></i> Прогресс: ${task.progress || 0}%</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            taskList.innerHTML = html;
+        }
+
+        // Функция показа сообщений
+        function showMessage(message) {
+            // Создаем временное уведомление
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                z-index: 1000;
+                font-weight: 500;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Удаляем через 3 секунды
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

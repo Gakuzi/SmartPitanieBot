@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartPit v2 — Управление проектом</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --danger: #e63946;
+            --warning: #fca311;
+            --gray: #8d99ae;
+            --gray-light: #edf2f4;
+            --border-radius: 12px;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            box-shadow: var(--shadow);
+            padding: 20px 0;
+            transition: var(--transition);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--gray-light);
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .logo i {
+            font-size: 2rem;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: var(--gray-light);
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .nav-item i {
+            width: 24px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 30px;
+            transition: var(--transition);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            color: var(--primary-dark);
+            font-weight: 500;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .icon-blue { background: rgba(67, 97, 238, 0.1); color: var(--primary); }
+        .icon-green { background: rgba(76, 201, 240, 0.1); color: #2a9d8f; }
+        .icon-orange { background: rgba(252, 163, 17, 0.1); color: var(--warning); }
+        .icon-red { background: rgba(230, 57, 70, 0.1); color: var(--danger); }
+
+        .stat-title {
+            font-size: 0.9rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        /* Tasks */
+        .tasks-container {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .tasks-header {
+            padding: 20px;
+            background: white;
+            border-bottom: 1px solid var(--gray-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 2px;
+            background: var(--gray-light);
+            padding: 2px;
+            border-radius: 6px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .tab.active {
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .tasks-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-light);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        .task-checkbox {
+            margin-top: 4px;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .task-subtasks {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 8px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+
+        .task-priority {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .priority-high { background: #ffebee; color: var(--danger); }
+        .priority-medium { background: #fff8e1; color: var(--warning); }
+        .priority-low { background: #e8f5e8; color: #2a9d8f; }
+
+        /* Forms */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            width: 500px;
+            max-width: 90vw;
+            border-radius: var(--border-radius);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--gray-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 500;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+
+        .form-select {
+            appearance: none;
+            background: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d99ae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") no-repeat right 14px center;
+            padding-right: 40px;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid var(--gray-light);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .timeline-phase {
+            min-width: 250px;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 15px;
+        }
+
+        .phase-header {
+            font-weight: 500;
+            color: var(--primary);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .phase-task {
+            padding: 10px;
+            border-left: 3px solid var(--primary);
+            margin-bottom: 10px;
+            background: var(--gray-light);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .phase-task:last-child {
+            margin-bottom: 0;
+        }
+
+        .phase-task-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .phase-task-status {
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .status-not-started { background: #f8f9fa; color: var(--gray); }
+        .status-in-progress { background: #fff8e1; color: var(--warning); }
+        .status-completed { background: #e8f5e8; color: #2a9d8f; }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 80px;
+                padding: 20px 0;
+            }
+            .sidebar-header, .nav-item span {
+                display: none;
+            }
+            .nav-item {
+                justify-content: center;
+                padding: 16px;
+            }
+            .nav-item i {
+                font-size: 1.2rem;
+            }
+            .main-content {
+                margin-left: 80px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .timeline {
+                flex-direction: column;
+            }
+            .timeline-phase {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-rocket"></i>
+                    <span>SmartPit v2</span>
+                </div>
+            </div>
+            <div class="nav-item active">
+                <i class="fas fa-tasks"></i>
+                <span>Управление задачами</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Аналитика</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-calendar-alt"></i>
+                <span>График работ</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-clock"></i>
+                <span>Тайм-менеджмент</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Настройки</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1 class="page-title">Управление проектом SmartPit v2</h1>
+                <div>
+                    <button class="btn btn-outline" onclick="openTz()">
+                        <i class="fas fa-file-alt"></i> Техническое задание
+                    </button>
+                    <button class="btn btn-primary" onclick="openAddPhaseModal()">
+                        <i class="fas fa-plus"></i> Новый этап
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-title">Всего этапов</div>
+                            <div class="stat-value">6</div>
+                        </div>
+                        <div class="stat-icon icon-blue">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-title">Задач выполнено</div>
+                            <div class="stat-value">12/48</div>
+                        </div>
+                        <div class="stat-icon icon-green">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-title">В работе</div>
+                            <div class="stat-value">5</div>
+                        </div>
+                        <div class="stat-icon icon-orange">
+                            <i class="fas fa-spinner"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-title">Просрочено</div>
+                            <div class="stat-value">1</div>
+                        </div>
+                        <div class="stat-icon icon-red">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Прогресс реализации проекта</h3>
+                    <select class="form-control form-select" style="width: auto;">
+                        <option>Последние 30 дней</option>
+                        <option>Последние 7 дней</option>
+                        <option>Весь период</option>
+                    </select>
+                </div>
+                <canvas id="progressChart"></canvas>
+            </div>
+
+            <!-- Timeline -->
+            <h3 style="margin: 20px 0 10px;">График реализации</h3>
+            <div class="timeline">
+                <div class="timeline-phase">
+                    <div class="phase-header">1. Подготовка</div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Создать структуру папок</div>
+                        <div class="phase-task-status status-completed">Выполнено</div>
+                    </div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Настроить Google Apps Script</div>
+                        <div class="phase-task-status status-completed">Выполнено</div>
+                    </div>
+                </div>
+                <div class="timeline-phase">
+                    <div class="phase-header">2. Ядро системы</div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Реализовать core/router.js</div>
+                        <div class="phase-task-status status-completed">Выполнено</div>
+                    </div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Реализовать core/state.js</div>
+                        <div class="phase-task-status status-in-progress">В работе</div>
+                    </div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Реализовать core/logger.js</div>
+                        <div class="phase-task-status status-not-started">Не начато</div>
+                    </div>
+                </div>
+                <div class="timeline-phase">
+                    <div class="phase-header">3. Telegram-интерфейс</div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Реализовать modules/telegram/api.js</div>
+                        <div class="phase-task-status status-not-started">Не начато</div>
+                    </div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Реализовать modules/telegram/keyboard.js</div>
+                        <div class="phase-task-status status-not-started">Не начато</div>
+                    </div>
+                </div>
+                <div class="timeline-phase">
+                    <div class="phase-header">4. Google Sheets</div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Реализовать modules/sheets/crud.js</div>
+                        <div class="phase-task-status status-not-started">Не начато</div>
+                    </div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Реализовать modules/sheets/schema.js</div>
+                        <div class="phase-task-status status-not-started">Не начато</div>
+                    </div>
+                </div>
+                <div class="timeline-phase">
+                    <div class="phase-header">5. AI-интеграция</div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Настроить ai/adapter.js</div>
+                        <div class="phase-task-status status-not-started">Не начато</div>
+                    </div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Реализовать prompt.js</div>
+                        <div class="phase-task-status status-not-started">Не начато</div>
+                    </div>
+                </div>
+                <div class="timeline-phase">
+                    <div class="phase-header">6. Тестирование</div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Комплексное тестирование</div>
+                        <div class="phase-task-status status-not-started">Не начато</div>
+                    </div>
+                    <div class="phase-task">
+                        <div class="phase-task-title">Документирование</div>
+                        <div class="phase-task-status status-not-started">Не начато</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasks List -->
+            <div class="tasks-container">
+                <div class="tasks-header">
+                    <h3>Задачи проекта</h3>
+                    <div class="tabs">
+                        <button class="tab active">Все</button>
+                        <button class="tab">В работе</button>
+                        <button class="tab">Завершённые</button>
+                    </div>
+                </div>
+                <div class="tasks-list">
+                    <div class="task-item">
+                        <input type="checkbox" class="task-checkbox" checked>
+                        <div class="task-content">
+                            <div class="task-title">Создать структуру папок</div>
+                            <div class="task-subtasks">— Создать папку core<br>— Создать папку modules<br>— Создать папку utils</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-calendar"></i> 01.08.2025</span>
+                                <span class="task-priority priority-low">Низкий</span>
+                                <span><i class="far fa-clock"></i> 1ч 30м</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <input type="checkbox" class="task-checkbox" checked>
+                        <div class="task-content">
+                            <div class="task-title">Настроить Google Apps Script</div>
+                            <div class="task-subtasks">— Создать проект в Google Apps Script<br>— Подключить Google Sheets<br>— Настроить Telegram Webhook</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-calendar"></i> 02.08.2025</span>
+                                <span class="task-priority priority-medium">Средний</span>
+                                <span><i class="far fa-clock"></i> 2ч 15м</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <input type="checkbox" class="task-checkbox" checked>
+                        <div class="task-content">
+                            <div class="task-title">Реализовать core/router.js</div>
+                            <div class="task-subtasks">— Парсинг команд<br>— Определение типа сообщения<br>— Перенаправление в модули</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-calendar"></i> 03.08.2025</span>
+                                <span class="task-priority priority-high">Высокий</span>
+                                <span><i class="far fa-clock"></i> 3ч 45м</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <input type="checkbox" class="task-checkbox" checked>
+                        <div class="task-content">
+                            <div class="task-title">Реализовать core/state.js</div>
+                            <div class="task-subtasks">— Установка состояния<br>— Получение состояния<br>— Очистка состояния</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-calendar"></i> 04.08.2025</span>
+                                <span class="task-priority priority-high">Высокий</span>
+                                <span><i class="far fa-clock"></i> 2ч 30м</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <input type="checkbox" class="task-checkbox">
+                        <div class="task-content">
+                            <div class="task-title">Реализовать core/logger.js</div>
+                            <div class="task-subtasks">— Логирование ошибок<br>— Логирование действий пользователя<br>— Форматирование сообщений</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-calendar"></i> 05.08.2025</span>
+                                <span class="task-priority priority-medium">Средний</span>
+                                <span><i class="far fa-clock"></i> 1ч 45м</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <input type="checkbox" class="task-checkbox">
+                        <div class="task-content">
+                            <div class="task-title">Реализовать modules/telegram/api.js</div>
+                            <div class="task-subtasks">— Отправка сообщений<br>— Приём сообщений<br>— Обработка ошибок</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-calendar"></i> 06.08.2025</span>
+                                <span class="task-priority priority-high">Высокий</span>
+                                <span><i class="far fa-clock"></i> 4ч 00м</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <input type="checkbox" class="task-checkbox">
+                        <div class="task-content">
+                            <div class="task-title">Реализовать modules/telegram/keyboard.js</div>
+                            <div class="task-subtasks">— Генерация главного меню<br>— Генерация подменю<br>— Динамические кнопки</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-calendar"></i> 07.08.2025</span>
+                                <span class="task-priority priority-medium">Средний</span>
+                                <span><i class="far fa-clock"></i> 3ч 15м</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <input type="checkbox" class="task-checkbox">
+                        <div class="task-content">
+                            <div class="task-title">Реализовать modules/sheets/crud.js</div>
+                            <div class="task-subtasks">— Чтение данных<br>— Запись данных<br>— Обновление данных<br>— Удаление данных</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-calendar"></i> 08.08.2025</span>
+                                <span class="task-priority priority-high">Высокий</span>
+                                <span><i class="far fa-clock"></i> 5ч 30м</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Phase Modal -->
+    <div id="addPhaseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Добавить новый этап</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="phaseName">Название этапа</label>
+                    <input type="text" id="phaseName" class="form-control" placeholder="Например: Ядро системы">
+                </div>
+                <div class="form-group">
+                    <label for="phaseDescription">Описание</label>
+                    <textarea id="phaseDescription" class="form-control form-textarea" placeholder="Краткое описание этапа..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="phaseDeadline">Крайний срок</label>
+                    <input type="date" id="phaseDeadline" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="phasePriority">Приоритет</label>
+                    <select id="phasePriority" class="form-control form-select">
+                        <option value="low">Низкий</option>
+                        <option value="medium" selected>Средний</option>
+                        <option value="high">Высокий</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('addPhaseModal')">Отмена</button>
+                <button class="btn btn-primary" onclick="addPhase()">Добавить этап</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="addTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Добавить задачу</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="taskPhase">Этап</label>
+                    <select id="taskPhase" class="form-control form-select">
+                        <option value="1">1. Подготовка</option>
+                        <option value="2">2. Ядро системы</option>
+                        <option value="3">3. Telegram-интерфейс</option>
+                        <option value="4">4. Google Sheets</option>
+                        <option value="5">5. AI-интеграция</option>
+                        <option value="6">6. Тестирование</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskTitle">Название задачи</label>
+                    <input type="text" id="taskTitle" class="form-control" placeholder="Например: Реализовать core/state.js">
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription">Описание</label>
+                    <textarea id="taskDescription" class="form-control form-textarea" placeholder="Подробное описание задачи..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="taskDeadline">Срок выполнения</label>
+                    <input type="date" id="taskDeadline" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="taskPriority">Приоритет</label>
+                    <select id="taskPriority" class="form-control form-select">
+                        <option value="low">Низкий</option>
+                        <option value="medium" selected>Средний</option>
+                        <option value="high">Высокий</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskEstimate">Планируемое время (часы)</label>
+                    <input type="number" id="taskEstimate" class="form-control" min="0" step="0.5" value="2">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('addTaskModal')">Отмена</button>
+                <button class="btn btn-primary" onclick="addTask()">Добавить задачу</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize chart
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['01.08', '02.08', '03.08', '04.08', '05.08', '06.08', '07.08'],
+                    datasets: [{
+                        label: 'Выполнено задач',
+                        data: [2, 4, 7, 10, 12, 12, 12],
+                        borderColor: '#4361ee',
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Запланировано',
+                        data: [0, 2, 4, 6, 8, 10, 12],
+                        borderColor: '#fca311',
+                        borderDash: [5, 5],
+                        backgroundColor: 'transparent',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 2
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Close modals on click outside
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeModal(this.id);
+                    }
+                });
+            });
+
+            // Close buttons
+            document.querySelectorAll('.close-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    closeModal(this.closest('.modal').id);
+                });
+            });
+        });
+
+        // Modal functions
+        function openAddPhaseModal() {
+            document.getElementById('addPhaseModal').style.display = 'flex';
+        }
+
+        function openAddTaskModal() {
+            document.getElementById('addTaskModal').style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function addPhase() {
+            const name = document.getElementById('phaseName').value;
+            if (!name) {
+                alert('Введите название этапа');
+                return;
+            }
+            
+            // In a real app, this would add to the timeline
+            alert(`Этап "${name}" добавлен!`);
+            closeModal('addPhaseModal');
+            document.getElementById('phaseName').value = '';
+            document.getElementById('phaseDescription').value = '';
+        }
+
+        function addTask() {
+            const title = document.getElementById('taskTitle').value;
+            if (!title) {
+                alert('Введите название задачи');
+                return;
+            }
+            
+            // In a real app, this would add to the task list
+            alert(`Задача "${title}" добавлена!`);
+            closeModal('addTaskModal');
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDescription').value = '';
+        }
+
+        function openTz() {
+            // In a real app, this would open idea.html
+            alert('Открытие технического задания (idea.html)');
+            // window.open('idea.html', '_blank');
+        }
+    </script>
+</body>
+</html>
