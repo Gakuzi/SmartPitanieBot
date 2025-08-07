@@ -139,6 +139,11 @@
             background: var(--primary-dark);
         }
 
+        /* Button loading */
+        .btn.loading { position: relative; opacity: 0.85; pointer-events: none; }
+        .btn.loading:after { content: ""; position: absolute; right: 12px; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.6); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
         .btn-outline {
             background: transparent;
             border: 1px solid var(--primary);
@@ -207,6 +212,26 @@
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
             margin-bottom: 30px;
+            position: relative;
+        }
+
+        .chart-container.loading:before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.7);
+            z-index: 1;
+        }
+        .chart-container.loading:after {
+            content: "";
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 36px; height: 36px;
+            margin: -18px 0 0 -18px;
+            border: 3px solid #ccc; border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            z-index: 2;
         }
 
         .chart-header {
@@ -885,7 +910,9 @@
         // Initialize chart
         document.addEventListener('DOMContentLoaded', function() {
             const ctx = document.getElementById('progressChart').getContext('2d');
-            new Chart(ctx, {
+            document.querySelector('.chart-container').classList.add('loading');
+            setTimeout(function(){
+              new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: ['01.08', '02.08', '03.08', '04.08', '05.08', '06.08', '07.08'],
@@ -925,7 +952,9 @@
                         }
                     }
                 }
-            });
+              });
+              document.querySelector('.chart-container').classList.remove('loading');
+            }, 600);
 
             // Close modals on click outside
             document.querySelectorAll('.modal').forEach(modal => {
@@ -945,6 +974,11 @@
         });
 
         // Modal functions
+        function setBtnLoading(btnEl, loading) {
+            if (!btnEl) return;
+            if (loading) btnEl.classList.add('loading'); else btnEl.classList.remove('loading');
+        }
+
         function openAddPhaseModal() {
             document.getElementById('addPhaseModal').style.display = 'flex';
         }
@@ -958,9 +992,12 @@
         }
 
         function addPhase() {
+            var btn = document.querySelector('#addPhaseModal .btn.btn-primary');
+            setBtnLoading(btn, true);
             const name = document.getElementById('phaseName').value;
             if (!name) {
                 alert('Введите название этапа');
+                setBtnLoading(btn, false);
                 return;
             }
             
@@ -969,12 +1006,16 @@
             closeModal('addPhaseModal');
             document.getElementById('phaseName').value = '';
             document.getElementById('phaseDescription').value = '';
+            setTimeout(function(){ setBtnLoading(btn, false); }, 300);
         }
 
         function addTask() {
+            var btn = document.querySelector('#addTaskModal .btn.btn-primary');
+            setBtnLoading(btn, true);
             const title = document.getElementById('taskTitle').value;
             if (!title) {
                 alert('Введите название задачи');
+                setBtnLoading(btn, false);
                 return;
             }
             
@@ -983,6 +1024,7 @@
             closeModal('addTaskModal');
             document.getElementById('taskTitle').value = '';
             document.getElementById('taskDescription').value = '';
+            setTimeout(function(){ setBtnLoading(btn, false); }, 300);
         }
 
         function openTz() {

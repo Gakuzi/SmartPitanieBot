@@ -9,3 +9,22 @@ function doPost(e) {
   }
 }
 
+function doGet(e) {
+  try {
+    var page = e && e.parameter && e.parameter.page;
+    if (page === 'project-manager') {
+      return HtmlService.createHtmlOutputFromFile('project-manager').setTitle('Менеджер проекта SmartPit');
+    }
+    if (page === 'admin') {
+      return HtmlService.createHtmlOutputFromFile('AdminPanel').setTitle('Центр администрирования SmartPit');
+    }
+    if (page === 'webhook') {
+      return HtmlService.createHtmlOutputFromFile('webhook_manager_dialog').setTitle('Управление вебхуком');
+    }
+    // По умолчанию — проектный менеджер
+    return HtmlService.createHtmlOutputFromFile('project-manager').setTitle('Менеджер проекта SmartPit');
+  } catch (err) {
+    return HtmlService.createHtmlOutput('Ошибка загрузки страницы: ' + err.message);
+  }
+}
+
