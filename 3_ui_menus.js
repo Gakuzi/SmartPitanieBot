@@ -10,9 +10,9 @@
  */
 function showAdminPanel() {
   const html = HtmlService.createHtmlOutputFromFile('AdminPanel')
-    .setWidth(600)
-    .setHeight(550);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Центр управления ботом');
+    .setWidth(1200)
+    .setHeight(800);
+  SpreadsheetApp.getUi().showModalDialog(html, 'SmartPit Console — Центр управления');
 }
 
 function openProjectManagerWeb() {
@@ -25,6 +25,133 @@ function openIdeaDoc() {
   const url = ScriptApp.getService().getUrl() + '?page=idea';
   const html = HtmlService.createHtmlOutput(`<a href="${url}" target="_blank">Открыть ТЗ</a><script>window.open('${url}','_blank');google.script.host.close();</script>`).setWidth(300).setHeight(80);
   SpreadsheetApp.getUi().showModalDialog(html, 'Техническое задание');
+}
+
+function runQuickDiagnostics() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const results = Core.Diagnostics.runQuick();
+    const message = Core.Diagnostics.formatReportForTelegram(results);
+    ui.alert('Диагностика системы', message, ui.ButtonSet.OK);
+  } catch (error) {
+    SpreadsheetApp.getUi().alert('Ошибка диагностики: ' + error.message);
+  }
+}
+
+function restoreTableStructure() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const result = Core.Diagnostics.autoRepair();
+    ui.alert('Восстановление', result.success ? 'Структура восстановлена успешно!' : 'Ошибка: ' + result.error, ui.ButtonSet.OK);
+  } catch (error) {
+    SpreadsheetApp.getUi().alert('Ошибка восстановления: ' + error.message);
+  }
+}
+
+// Функции для AdminPanel
+function testTelegramAPI() {
+  const results = { passed: false, message: '', details: [] };
+  
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const telegramToken = scriptProps.getProperty('TELEGRAM_TOKEN');
+    
+    if (!telegramToken) {
+      results.message = 'TELEGRAM_TOKEN не настроен';
+      return results;
+    }
+    
+    results.details.push(`✅ TELEGRAM_TOKEN настроен`);
+    
+    // Тестируем получение информации о боте
+    try {
+      const url = `https://api.telegram.org/bot${telegramToken}/getMe`;
+      const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+      const responseCode = response.getResponseCode();
+      
+      if (responseCode === 200) {
+        const data = JSON.parse(response.getContentText());
+        if (data.ok) {
+          results.details.push(`✅ Бот активен: @${data.result.username}`);
+          results.details.push(`🤖 Имя бота: ${data.result.first_name}`);
+          results.passed = true;
+          results.message = 'Telegram API работает корректно';
+        } else {
+          results.message = `Ошибка Telegram API: ${data.description}`;
+        }
+      } else {
+        results.message = `HTTP ошибка: ${responseCode}`;
+      }
+      
+    } catch (error) {
+      results.message = `Ошибка при тестировании API: ${error.message}`;
+    }
+    
+  } catch (error) {
+    results.message = `Критическая ошибка Telegram API: ${error.message}`;
+  }
+  
+  return results;
+}
+
+function testGeminiAPI() {
+  const results = { passed: false, message: '', details: [] };
+  
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const geminiApiKey = scriptProps.getProperty('GEMINI_API_KEY');
+    
+    if (!geminiApiKey) {
+      results.message = 'GEMINI_API_KEY не настроен';
+      return results;
+    }
+    
+    results.details.push(`✅ GEMINI_API_KEY настроен`);
+    
+    // Проверяем функцию callGemini
+    try {
+      if (typeof callGemini === 'function') {
+        results.details.push(`✅ Функция callGemini: доступна`);
+        results.passed = true;
+        results.message = 'Gemini API готов к работе';
+      } else {
+        results.message = 'Функция callGemini не найдена';
+      }
+    } catch (error) {
+      results.message = `Ошибка Gemini API: ${error.message}`;
+    }
+    
+  } catch (error) {
+    results.message = `Критическая ошибка Gemini API: ${error.message}`;
+  }
+  
+  return results;
+}
+
+function setTelegramWebhook() {
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const telegramToken = scriptProps.getProperty('TELEGRAM_TOKEN');
+    
+    if (!telegramToken) {
+      return { success: false, error: 'TELEGRAM_TOKEN не настроен' };
+    }
+    
+    const webAppUrl = ScriptApp.getService().getUrl();
+    const webhookUrl = `https://api.telegram.org/bot${telegramToken}/setWebhook?url=${webAppUrl}`;
+    
+    const response = UrlFetchApp.fetch(webhookUrl);
+    const data = JSON.parse(response.getContentText());
+    
+    if (data.ok) {
+      return { success: true, message: 'Webhook установлен успешно' };
+    } else {
+      return { success: false, error: data.description };
+    }
+    
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 }
 
 /**

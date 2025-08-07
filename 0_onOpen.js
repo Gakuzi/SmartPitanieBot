@@ -9,8 +9,13 @@
  */
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
-  ui.createMenu('SmartPitanie Bot')
-    .addItem('Панель администратора', 'showAdminPanel')
+  ui.createMenu('SmartPit Console')
+    .addItem('Открыть консоль управления', 'showAdminPanel')
+    .addItem('Открыть менеджер проекта', 'openProjectManagerWeb')
+    .addItem('Открыть ТЗ (idea)', 'openIdeaDoc')
     .addItem('Настройки Webhook', 'showWebhookDialog')
+    .addSeparator()
+    .addItem('Диагностика системы', 'runQuickDiagnostics')
+    .addItem('Восстановить структуру', 'restoreTableStructure')
     .addToUi();
 }

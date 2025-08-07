@@ -42,3 +42,8 @@ function testTelegramWebhook() {
     };
   }
 }
+
+// Простая функция для тестирования doGet
+function testDoGet() {
+  return HtmlService.createHtmlOutput('<h1>✅ doGet работает!</h1><p>Функция doGet успешно выполняется</p>');
+}
