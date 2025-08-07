@@ -102,15 +102,7 @@ function createCustomMenu() {
   adminMenu.addToUi();
 }
 
-/**
- * Показывает диалоговое окно для управления вебхуком.
- */
-function showWebhookManagerDialog() {
-  const html = HtmlService.createHtmlOutputFromFile('webhook_manager_dialog')
-    .setWidth(700)
-    .setHeight(650);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Анализатор статуса вебхука');
-}
+// showWebhookManagerDialog определен в ui_dialogs.js (во избежание дублирования)
 
 /**
  * Получает базовую информацию о вебхуке и проводит первичный анализ.
@@ -215,27 +207,9 @@ function getAiAnalysis(basicInfo) {
 }
 
 
-/**
- * Устанавливает вебхук из диалогового окна.
- * @param {string} url - URL для установки вебхука.
- * @returns {object} - Результат операции.
- */
-function setWebhookFromDialog(url) {
-  if (!url || !url.startsWith("https://script.google.com/macros/s/")) {
-    const errorDesc = "Предоставлен недействительный URL веб-приложения Google Apps Script.";
-    Logger.log(`❌ Ошибка установки вебхука: ${errorDesc} URL: ${url}`);
-    return { ok: false, description: errorDesc };
-  }
-  return setTelegramWebhook(url);
-}
+// setWebhookFromDialog определен в ui_dialogs.js
 
-/**
- * Удаляет вебхук из диалогового окна.
- * @returns {object} - Результат операции.
- */
-function deleteWebhookFromDialog() {
-  return deleteTelegramWebhook();
-}
+// deleteWebhookFromDialog определен в ui_dialogs.js
 
 /**
  * Настраивает таблицу администратора.
@@ -463,4 +437,345 @@ function getMenu(chatId) {
 function sendMenu(chatId) {
   const text = 'Чем могу помочь?';
   sendText(chatId, text, getMenu(chatId));
+}
+
+/**
+ * Создает главное меню с дополнительными функциями
+ */
+function getMainMenu(chatId) {
+  const userData = getUserData(chatId);
+  const isAdmin = userData && userData.isAdmin;
+  
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '🍽️ Меню питания', callback_data: 'menu_nutrition' },
+        { text: '📋 Список покупок', callback_data: 'shopping_list' }
+      ],
+      [
+        { text: '⚙️ Настройки', callback_data: 'settings' },
+        { text: '📊 Статистика', callback_data: 'statistics' }
+      ],
+      [
+        { text: '🔄 Замены продуктов', callback_data: 'product_replacements' },
+        { text: '📝 Дневник питания', callback_data: 'food_diary' }
+      ]
+    ]
+  };
+
+  // Добавляем админские функции
+  if (isAdmin) {
+    keyboard.inline_keyboard.push([
+      { text: '🔧 Диагностика системы', callback_data: 'admin_diagnostics' },
+      { text: '📋 Управление проектом', callback_data: 'admin_project_manager' }
+    ]);
+    keyboard.inline_keyboard.push([
+      { text: '⚙️ Админ панель', callback_data: 'admin_panel' },
+      { text: '🛠️ Восстановить листы', callback_data: 'admin_restore_sheets' }
+    ]);
+  }
+
+  return {
+    text: `🤖 *SmartPitanieBot* - Ваш помощник в питании
+
+Выберите действие:`,
+    reply_markup: keyboard
+  };
+}
+
+/**
+ * Обработка админских callback'ов
+ */
+function handleAdminCallback(callbackQuery) {
+  const chatId = callbackQuery.from.id;
+  const data = callbackQuery.data;
+  
+  switch (data) {
+    case 'admin_diagnostics':
+      handleAdminDiagnostics(chatId);
+      break;
+    case 'admin_project_manager':
+      handleAdminProjectManager(chatId);
+      break;
+    case 'admin_panel':
+      handleAdminPanel(chatId);
+      break;
+    case 'admin_restore_sheets':
+      handleAdminRestoreSheets(chatId);
+      break;
+    default:
+      sendText(chatId, '❌ Неизвестная команда администратора');
+  }
+  
+  // Отвечаем на callback query
+  answerCallbackQuery(callbackQuery.id);
+}
+
+/**
+ * Обработка диагностики системы
+ */
+function handleAdminDiagnostics(chatId) {
+  sendText(chatId, '🔧 Запуск диагностики системы...');
+  
+  try {
+    const results = runFullSystemTest();
+    
+    let message = '📊 *Результаты диагностики системы:*\n\n';
+    message += `✅ Пройдено: ${results.passed}\n`;
+    message += `❌ Провалено: ${results.failed}\n`;
+    message += `📈 Общий результат: ${results.passed}/${results.tests.length}\n\n`;
+    
+    if (results.tests) {
+      message += '*Детальные результаты:*\n';
+      results.tests.forEach(test => {
+        const status = test.passed ? '✅' : '❌';
+        message += `${status} ${test.name}: ${test.message}\n`;
+      });
+    }
+    
+    if (results.errors && results.errors.length > 0) {
+      message += '\n*Ошибки:*\n';
+      results.errors.forEach(error => {
+        message += `❌ ${error}\n`;
+      });
+    }
+    
+    sendText(chatId, message);
+    
+  } catch (error) {
+    sendText(chatId, '❌ Ошибка при выполнении диагностики: ' + error.message);
+  }
+}
+
+/**
+ * Обработка управления проектом
+ */
+function handleAdminProjectManager(chatId) {
+  try {
+    const projectData = getProjectData();
+    const stats = getProjectStats();
+    
+    let message = '📋 *Управление проектом SmartPitanieBot*\n\n';
+    message += `📊 *Статистика:*\n`;
+    message += `• Всего задач: ${stats.totalTasks}\n`;
+    message += `• Завершено: ${stats.completedTasks}\n`;
+    message += `• В работе: ${stats.inProgressTasks}\n`;
+    message += `• Новых: ${stats.newTasks}\n`;
+    message += `• Просрочено: ${stats.overdueTasks}\n`;
+    message += `• Процент завершения: ${stats.completionRate}%\n`;
+    message += `• Средний прогресс: ${stats.averageProgress}%\n\n`;
+    
+    if (projectData.tasks && projectData.tasks.length > 0) {
+      message += '*Последние задачи:*\n';
+      const recentTasks = projectData.tasks.slice(0, 5);
+      recentTasks.forEach(task => {
+        const status = task.status === 'Завершена' ? '✅' : 
+                      task.status === 'В работе' ? '🔄' : '📝';
+        message += `${status} ${task.name} (${task.status})\n`;
+      });
+    } else {
+      message += '📝 Нет активных задач';
+    }
+    
+    // Добавляем кнопки для управления
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '➕ Добавить задачу', callback_data: 'admin_add_task' },
+          { text: '📊 Полная статистика', callback_data: 'admin_full_stats' }
+        ],
+        [
+          { text: '🔄 Обновить данные', callback_data: 'admin_refresh_data' },
+          { text: '📋 Все задачи', callback_data: 'admin_all_tasks' }
+        ],
+        [
+          { text: '🔙 Назад', callback_data: 'back_to_main' }
+        ]
+      ]
+    };
+    
+    sendText(chatId, message, keyboard);
+    
+  } catch (error) {
+    sendText(chatId, '❌ Ошибка при загрузке данных проекта: ' + error.message);
+  }
+}
+
+/**
+ * Обработка админ панели
+ */
+function handleAdminPanel(chatId) {
+  const webAppUrl = ScriptApp.getService().getUrl();
+  const adminPanelUrl = webAppUrl + '?page=admin';
+  
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '🔧 Открыть админ панель', web_app: { url: adminPanelUrl } }
+      ],
+      [
+        { text: '🔙 Назад', callback_data: 'back_to_main' }
+      ]
+    ]
+  };
+  
+  sendText(chatId, 
+    '⚙️ *Админ панель SmartPitanieBot*\n\n' +
+    'Откройте полную админ панель для управления системой, диагностики и мониторинга.',
+    keyboard
+  );
+}
+
+/**
+ * Обработка восстановления листов
+ */
+function handleAdminRestoreSheets(chatId) {
+  sendText(chatId, '🔄 Запуск восстановления структуры листов...');
+  
+  try {
+    const results = restoreTableStructure();
+    
+    let message = '📋 *Результаты восстановления:*\n\n';
+    
+    if (results.restored && results.restored.length > 0) {
+      message += '✅ *Восстановлено:*\n';
+      results.restored.forEach(item => {
+        message += `• ${item}\n`;
+      });
+    }
+    
+    if (results.errors && results.errors.length > 0) {
+      message += '\n❌ *Ошибки:*\n';
+      results.errors.forEach(error => {
+        message += `• ${error}\n`;
+      });
+    }
+    
+    if (results.success) {
+      message += '\n✅ Восстановление завершено успешно!';
+    } else {
+      message += '\n⚠️ Восстановление завершено с ошибками.';
+    }
+    
+    sendText(chatId, message);
+    
+  } catch (error) {
+    sendText(chatId, '❌ Ошибка при восстановлении: ' + error.message);
+  }
+}
+
+/**
+ * Обработка добавления новой задачи
+ */
+function handleAdminAddTask(chatId) {
+  // Здесь можно реализовать интерактивное добавление задачи
+  // Пока отправляем инструкцию
+  sendText(chatId, 
+    '➕ *Добавление новой задачи*\n\n' +
+    'Для добавления задачи используйте админ панель или отправьте сообщение в формате:\n\n' +
+    '`/add_task Название|Описание|Приоритет|Исполнитель|Дедлайн`\n\n' +
+    'Пример:\n' +
+    '`/add_task Исправить баг|Исправить ошибку в меню|Высокий|Разработчик|2024-01-15`'
+  );
+}
+
+/**
+ * Обработка полной статистики
+ */
+function handleAdminFullStats(chatId) {
+  try {
+    const stats = getProjectStats();
+    const projectData = getProjectData();
+    
+    let message = '📊 *Полная статистика проекта*\n\n';
+    message += `📈 *Общие показатели:*\n`;
+    message += `• Всего задач: ${stats.totalTasks}\n`;
+    message += `• Завершено: ${stats.completedTasks}\n`;
+    message += `• В работе: ${stats.inProgressTasks}\n`;
+    message += `• Новых: ${stats.newTasks}\n`;
+    message += `• Просрочено: ${stats.overdueTasks}\n`;
+    message += `• Процент завершения: ${stats.completionRate}%\n`;
+    message += `• Средний прогресс: ${stats.averageProgress}%\n\n`;
+    
+    if (projectData.projects && projectData.projects.length > 0) {
+      message += `📋 *Проекты (${projectData.projects.length}):*\n`;
+      projectData.projects.forEach(project => {
+        const status = project.status === 'Активный' ? '🟢' : '🔴';
+        message += `${status} ${project.name}\n`;
+      });
+      message += '\n';
+    }
+    
+    if (projectData.team && projectData.team.length > 0) {
+      message += `👥 *Команда (${projectData.team.length}):*\n`;
+      projectData.team.forEach(member => {
+        message += `• ${member.name} - ${member.role}\n`;
+      });
+    }
+    
+    sendText(chatId, message);
+    
+  } catch (error) {
+    sendText(chatId, '❌ Ошибка при загрузке статистики: ' + error.message);
+  }
+}
+
+/**
+ * Обработка обновления данных
+ */
+function handleAdminRefreshData(chatId) {
+  sendText(chatId, '🔄 Обновление данных проекта...');
+  
+  try {
+    // Здесь можно добавить логику обновления данных
+    sendText(chatId, '✅ Данные проекта обновлены!');
+    
+    // Показываем обновленную статистику
+    handleAdminProjectManager(chatId);
+    
+  } catch (error) {
+    sendText(chatId, '❌ Ошибка при обновлении данных: ' + error.message);
+  }
+}
+
+/**
+ * Обработка всех задач
+ */
+function handleAdminAllTasks(chatId) {
+  try {
+    const projectData = getProjectData();
+    
+    if (!projectData.tasks || projectData.tasks.length === 0) {
+      sendText(chatId, '📝 Нет активных задач');
+      return;
+    }
+    
+    let message = `📋 *Все задачи (${projectData.tasks.length}):*\n\n`;
+    
+    projectData.tasks.forEach((task, index) => {
+      const status = task.status === 'Завершена' ? '✅' : 
+                    task.status === 'В работе' ? '🔄' : '📝';
+      const priority = task.priority === 'Высокий' ? '🔴' : 
+                      task.priority === 'Средний' ? '🟡' : '🟢';
+      
+      message += `${index + 1}. ${status} ${priority} ${task.name}\n`;
+      message += `   Статус: ${task.status} | Прогресс: ${task.progress}%\n`;
+      if (task.assignee) message += `   Исполнитель: ${task.assignee}\n`;
+      if (task.deadline) message += `   Дедлайн: ${task.deadline}\n`;
+      message += '\n';
+    });
+    
+    // Разбиваем на части, если сообщение слишком длинное
+    if (message.length > 4000) {
+      const parts = message.match(/.{1,4000}/g);
+      parts.forEach(part => {
+        sendText(chatId, part);
+      });
+    } else {
+      sendText(chatId, message);
+    }
+    
+  } catch (error) {
+    sendText(chatId, '❌ Ошибка при загрузке задач: ' + error.message);
+  }
 }

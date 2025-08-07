@@ -1,18 +1,63 @@
 const ALL_COMMANDS = [
-  '/start', '🍽 показать меню', '🛒 список покупок', '⚙️ настройки', '🔄 замена продукта'
+  '/start', '🍽 показать меню', '🛒 список покупок', '⚙️ настройки', '🔄 замена продукта', '👨‍🍳 что готовим?'
 ];
 
 function isCommand(msg) {
-  return ALL_COMMANDS.includes(msg.toLowerCase());
+  return ALL_COMMANDS.includes((msg || '').toLowerCase());
 }
 
+/**
+ * Главная функция обработки входящих обновлений от Telegram.
+ * @param {object} data - Полный объект данных от Telegram.
+ */
+function handleIncomingUpdate(data) {
+  try {
+    if (data.callback_query) {
+      handleCallbackQuery(data.callback_query);
+      return;
+    }
 
+    if (data.message) {
+      const message = data.message;
+      const chatId = message.chat.id;
+      const text = message.text || '';
+      const msgRaw = text;
+
+      Logger.log(`Получено сообщение от ${chatId}: ${text}`);
+
+      const session = getSession(chatId);
+      if (session.awaitingInput) {
+        handleUserInput(chatId, text, session);
+        return;
+      }
+
+      if (isCommand(text)) {
+        handleCommand(chatId, text, msgRaw, message);
+        return;
+      }
+
+      if (text && text.trim()) {
+        if (isAiModeEnabled()) {
+          handleFreeText(chatId, text);
+        } else {
+          sendText(chatId, "Я не понимаю эту команду. Пожалуйста, используйте кнопки меню.", getMenu(chatId));
+        }
+        return;
+      }
+
+      sendText(chatId, "Пожалуйста, используйте кнопки меню для навигации.", getMenu(chatId));
+    }
+
+  } catch (err) {
+    Logger.log(`ОШИБКА в handleIncomingUpdate: ${err.message}\nСтек: ${err.stack}`);
+  }
+}
 
 // --- Обработка нажатий на встроенные кнопки ---
 function handleCallbackQuery(callbackQuery) {
   const chatId = callbackQuery.from.id;
   const messageId = callbackQuery.message.message_id;
-  const [action, value] = callbackQuery.data.split(':');
+  const [action, value] = String(callbackQuery.data || '').split(':');
   const session = getSession(chatId);
 
   answerCallbackQuery(callbackQuery.id);
@@ -20,16 +65,17 @@ function handleCallbackQuery(callbackQuery) {
   if (action === 'setGoal') {
     const userData = saveUserParam(chatId, 'goal', value);
     editMessageText(chatId, messageId, `Цель сохранена: *${value}*`);
-    if (isAiMode() && userData.weight && userData.goal) {
-        triggerNutritionCalculation(chatId, userData);
+    if (isAiMode() && isProfileComplete(userData)) {
+      triggerNutritionCalculation(chatId, userData);
     }
     sendMenu(chatId);
     return;
   }
 
   if (action === 'set_sex') {
-    editMessageText(chatId, messageId, `Пол сохранен: *${value === 'm' ? 'Мужской' : 'Женский'}*`);
-    session.data.sex = value;
+    const gender = value === 'm' ? 'male' : 'female';
+    editMessageText(chatId, messageId, `Пол сохранен: *${gender === 'male' ? 'Мужской' : 'Женский'}*`);
+    session.data.gender = gender;
     updateSession(chatId, 'awaiting_activity', session.data);
     sendActivityOptions(chatId);
     return;
@@ -37,19 +83,18 @@ function handleCallbackQuery(callbackQuery) {
 
   if (action === 'set_activity') {
     editMessageText(chatId, messageId, `Активность сохранена: *${value}*`);
-    session.data.activity = value;
-    // Все данные собраны, сохраняем и считаем
+    session.data.activityLevel = value;
     let userData = saveUserParam(chatId, 'weight', session.data.weight);
     userData = saveUserParam(chatId, 'height', session.data.height);
     userData = saveUserParam(chatId, 'age', session.data.age);
-    userData = saveUserParam(chatId, 'sex', session.data.sex);
-    userData = saveUserParam(chatId, 'activity', session.data.activity);
-    
+    userData = saveUserParam(chatId, 'gender', session.data.gender);
+    userData = saveUserParam(chatId, 'activityLevel', session.data.activityLevel);
+
     clearSession(chatId);
     sendText(chatId, 'Параметры сохранены.');
 
-    if (isAiMode() && userData.weight && userData.goal) {
-        triggerNutritionCalculation(chatId, userData);
+    if (isAiMode() && isProfileComplete(userData)) {
+      triggerNutritionCalculation(chatId, userData);
     }
     sendMenu(chatId);
     return;
@@ -58,16 +103,16 @@ function handleCallbackQuery(callbackQuery) {
 
 // --- Обработка команд ---
 function handleCommand(chatId, msg, msgRaw, messageData) {
+  const normalized = (msg || '').toLowerCase();
   if (msg === '/start') {
-    onboardUser(chatId, messageData.from); // Создаем инфраструктуру, если ее нет
+    onboardUser(chatId, messageData.from);
     const userFirstName = messageData.from.first_name || messageData.from.username || 'пользователь';
-    startSetupDialog(chatId, userFirstName); // Запускаем диалог знакомства
-    sendMenu(chatId); // Отправляем основное меню
+    startSetupDialog(chatId, userFirstName);
+    sendMenu(chatId);
     return;
   }
 
-
-  switch (msg) {
+  switch (normalized) {
     case '⚙️ настройки':
       return sendSettingsMenu(chatId);
     case '⬅️ назад':
@@ -83,20 +128,14 @@ function handleCommand(chatId, msg, msgRaw, messageData) {
     case '🍽 показать меню':
       if (isAiMode()) {
         const userData = getUserData(chatId);
-        if (userData.weight && userData.goal) {
+        if (isProfileComplete(userData)) {
           triggerNutritionCalculation(chatId, userData);
+          generateMenu(chatId);
         } else {
-          sendText(chatId, "Пожалуйста, сначала введите свои параметры и установите цель в настройках.");
+          sendText(chatId, "Пожалуйста, сначала завершите настройку профиля (пол, возраст, рост, вес, цель, активность). Откройте ⚙️ Настройки.");
         }
       } else {
-        const userData = getUserData(chatId);
-        try {
-          const bmrData = calculateBMR(userData);
-          const menu = generateMenu(bmrData);
-          sendText(chatId, menu);
-        } catch (e) {
-          sendText(chatId, `Ошибка: ${e.message}`);
-        }
+        sendTodayMenu(chatId);
       }
       return;
     case '🛒 список покупок':
@@ -106,7 +145,7 @@ function handleCommand(chatId, msg, msgRaw, messageData) {
     case '🔄 замена продукта':
       return sendText(chatId, 'Напиши, например: 🔄 замена творог');
     default:
-      if (msg.startsWith('🔄 замена')) return sendSubstitute(chatId, msgRaw);
+      if (normalized.startsWith('🔄 замена')) return sendSubstitute(chatId, msgRaw);
       return sendMenu(chatId);
   }
 }
@@ -117,21 +156,18 @@ function handleUserInput(chatId, input, session) {
   if (session.awaitingInput) {
     switch (session.awaitingInput) {
       case 'awaiting_name_confirmation':
-        const lowerInput = input.toLowerCase();
+        const lowerInput = String(input || '').toLowerCase();
         let userNameToSave;
-
         if (lowerInput.includes('да') || lowerInput.includes('верно') || lowerInput.includes('yes')) {
-          // User confirmed the Telegram name
           const telegramUser = session.data.telegramUser;
           userNameToSave = telegramUser.first_name || telegramUser.username || 'Пользователь';
           sendText(chatId, `Отлично, ${userNameToSave}!`);
         } else {
-          // User provided a different name or wants to specify
           userNameToSave = input;
           sendText(chatId, `Хорошо, буду обращаться к тебе как ${userNameToSave}.`);
         }
-        saveUserParam(chatId, 'name', userNameToSave); // Save the user's preferred name
-        updateSession(chatId, 'awaiting_weight', session.data); // Transition to awaiting weight
+        saveUserParam(chatId, 'name', userNameToSave);
+        updateSession(chatId, 'awaiting_weight', session.data);
         sendText(chatId, 'Теперь введите ваш вес в килограммах (например, 70):');
         break;
 
@@ -171,18 +207,14 @@ function handleUserInput(chatId, input, session) {
           clearSession(chatId);
           return;
         }
-        // Просто передаем ответ пользователя AI для продолжения диалога
         const prompt = `Ты — AI-диетолог. Пользователь ответил на твое первое приветствие. Его ответ: "${input}". Продолжи диалог, задай уточняющие вопросы, чтобы собрать информацию для составления меню (пищевые привычки, аллергии, предпочтения). Будь кратким и веди диалог шаг за шагом. В конце, когда соберешь достаточно информации, скажи: "Отлично, я собрал всю информацию! Теперь мы можем перейти к расчету вашего КБЖУ и созданию меню."`;
-        const aiResponse = callGemini(prompt);
-        if (aiResponse) {
-          sendText(chatId, aiResponse);
-          // Если AI решил, что информации достаточно, можно переходить к следующему шагу
-          if (aiResponse.includes("Отлично, я собрал всю информацию")) {
+        const aiResponse = callGeminiStructured(prompt, false);
+        if (aiResponse && aiResponse.text) {
+          sendText(chatId, aiResponse.text);
+          if (aiResponse.text.indexOf("Отлично, я собрал всю информацию") !== -1) {
             clearSession(chatId);
-            // Здесь в будущем будет запуск расчета КБЖУ и генерации меню
             sendMenu(chatId);
           } else {
-            // Продолжаем диалог
             startSession(chatId, 'awaiting_intro_response');
           }
         } else {
@@ -207,7 +239,6 @@ function handleUserInput(chatId, input, session) {
         break;
     }
   } else {
-    // Если пользователь не в сессии и ввел не команду, сообщаем ему об этом
     sendText(chatId, "Я не распознал вашу команду. Пожалуйста, воспользуйтесь кнопками меню.", getMenu(chatId));
   }
 }
@@ -215,18 +246,18 @@ function handleUserInput(chatId, input, session) {
 function onboardUser(chatId, from) {
   const scriptProps = PropertiesService.getScriptProperties();
   const userFolderId = scriptProps.getProperty(String(chatId));
-  if (userFolderId) return; // Пользователь уже зарегистрирован
+  if (userFolderId) return;
 
   const rootFolder = DriveApp.getFolderById(scriptProps.getProperty('ROOT_FOLDER_ID'));
   const userFolder = rootFolder.createFolder(String(chatId));
   const userSpreadsheet = SpreadsheetApp.create(`${from.first_name || 'user'}_${chatId}`);
   const userFile = DriveApp.getFileById(userSpreadsheet.getId());
   userFolder.addFile(userFile);
-  DriveApp.getRootFolder().removeFile(userFile); // Убираем из корня диска
+  DriveApp.getRootFolder().removeFile(userFile);
 
   scriptProps.setProperty(String(chatId), userFolder.getId());
+  saveUserParam(chatId, 'sheetId', userSpreadsheet.getId());
 
-  // Добавляем пользователя в общую таблицу
   const usersSsId = scriptProps.getProperty('USERS_SPREADSHEET_ID');
   if (usersSsId) {
     const usersSs = SpreadsheetApp.openById(usersSsId);
@@ -242,8 +273,8 @@ function onboardUser(chatId, from) {
       new Date(),
       `=HYPERLINK("${userFolder.getUrl()}"; "${userFolder.getId()}")`,
       `=HYPERLINK("${userSpreadsheet.getUrl()}"; "${userSpreadsheet.getId()}")`,
-      'Стандарт', // Категория по умолчанию
-      false // Администратор по умолчанию
+      'Стандарт',
+      false
     ]);
   }
 }

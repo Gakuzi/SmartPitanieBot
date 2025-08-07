@@ -226,14 +226,14 @@ function handleFreeText(chatId, text) {
 2.  Твой ответ **ДОЛЖЕН** быть в формате JSON. Не пиши ничего, кроме JSON.
 
 **ФОРМАТ JSON:**
-```json
+\`\`\`json
 {
   "response": "Твой отформатированный в MarkdownV2 и экранированный ответ.",
   "buttons": [
     {"text": "Текст кнопки 1", "callback_data": "action1:value1"}
   ]
 }
-```
+\`\`\`
 `;
 
   const aiResponse = callGemini(prompt, true); // Запрашиваем JSON

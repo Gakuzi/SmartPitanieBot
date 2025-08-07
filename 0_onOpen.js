@@ -1,16 +1,16 @@
 /**
  * @file 0_onOpen.js
- * @description Этот файл содержит функцию onOpen(), которая автоматически выполняется при открытии Google Таблицы.
+ * @description Функции, которые выполняются при открытии Google Sheets.
  */
 
 /**
- * Создает кастомное меню в интерфейсе Google Sheets при открытии документа.
+ * Функция, которая выполняется при открытии таблицы.
+ * Добавляет пользовательское меню в интерфейс Google Sheets.
  */
 function onOpen() {
-  try {
-    createCustomMenu();
-  } catch (e) {
-    Logger.log(`❌ ОШИБКА при создании меню: ${e.message}\nStack: ${e.stack || 'N/A'}`);
-    SpreadsheetApp.getUi().alert(`Ошибка при загрузке меню: ${e.message}. Проверьте логи.`);
-  }
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('SmartPitanie Bot')
+    .addItem('Панель администратора', 'showAdminPanel')
+    .addItem('Настройки Webhook', 'showWebhookDialog')
+    .addToUi();
 }
