@@ -1,17 +1,13 @@
-function doPost(e) {
-  try {
-    if (!e || !e.postData || !e.postData.contents) return;
-    var data = JSON.parse(e.postData.contents);
-    // Новый роутер (обертка) безопасно делегирует в старую логику при необходимости
-    Core.Router.route(data);
-  } catch (err) {
-    Logger.log('main.doPost error: ' + err.message + '\n' + (err.stack || ''));
-  }
-}
+// doPost пока не используем - есть в doPost.js
 
 function doGet(e) {
   try {
     var page = e && e.parameter && e.parameter.page;
+    
+    if (page === 'test') {
+      return HtmlService.createHtmlOutput('<h1>TEST SUCCESS!</h1><p>doGet работает правильно</p>').setTitle('Тест');
+    }
+    
     if (page === 'project-manager') {
       return HtmlService.createHtmlOutputFromFile('project-manager').setTitle('Менеджер проекта SmartPit');
     }
@@ -24,10 +20,10 @@ function doGet(e) {
     if (page === 'webhook') {
       return HtmlService.createHtmlOutputFromFile('webhook_manager_dialog').setTitle('Управление вебхуком');
     }
-    // По умолчанию — проектный менеджер
-    return HtmlService.createHtmlOutputFromFile('project-manager').setTitle('Менеджер проекта SmartPit');
+    // По умолчанию — простая тестовая страница
+    return HtmlService.createHtmlOutput('<h1>SmartPit v2</h1><p>Добро пожаловать!</p><ul><li><a href="?page=project-manager">Менеджер проекта</a></li><li><a href="?page=idea">ТЗ</a></li><li><a href="?page=admin">Админка</a></li></ul>').setTitle('SmartPit');
   } catch (err) {
-    return HtmlService.createHtmlOutput('Ошибка загрузки страницы: ' + err.message);
+    return HtmlService.createHtmlOutput('Ошибка загрузки страницы: ' + err.message + '\n\nStack: ' + (err.stack || 'не доступен'));
   }
 }
 
