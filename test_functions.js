@@ -47,3 +47,15 @@ function testTelegramWebhook() {
 function testDoGet() {
   return HtmlService.createHtmlOutput('<h1>✅ doGet работает!</h1><p>Функция doGet успешно выполняется</p>');
 }
+
+// Функция для тестирования меню
+function testMenuFunction() {
+  Logger.log('Тестирование функции меню');
+  return 'Меню работает!';
+}
+
+// Функция для проверки onOpen
+function testOnOpen() {
+  Logger.log('Тестирование onOpen');
+  return 'onOpen работает!';
+}
