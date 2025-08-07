@@ -32,7 +32,7 @@ clasp push
 ```
 clasp deploy -d "SmartPit v2"
 ```
-6) Настроить webhook Telegram на URL выданного деплоя
+6) Настроить вебхук Telegram на URL выданного деплоя
 
 ## Самодиагностика и восстановление
 - В Telegram: раздел «Диагностика и восстановление» в SmartPit Console
@@ -44,4 +44,4 @@ clasp deploy -d "SmartPit v2"
 - Добавляйте модульные юниты в `/modules` без нарушения зависимостей
 
 ## Связь
-Автор: Климов Евгений — Telegram: @eklimov
+Автор: Климов Евгений — [Написать в Telegram](https://t.me/eklimov)

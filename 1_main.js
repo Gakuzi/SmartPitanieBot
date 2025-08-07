@@ -144,6 +144,10 @@ function handleCommand(chatId, msg, msgRaw, messageData) {
       return sendCookingList(chatId);
     case '🔄 замена продукта':
       return sendText(chatId, 'Напиши, например: 🔄 замена творог');
+    case '🗂 менеджер проекта':
+      return sendText(chatId, 'Откройте менеджер проекта: ' + ScriptApp.getService().getUrl() + '?page=project-manager');
+    case '📄 техническое задание':
+      return sendText(chatId, 'Откройте ТЗ: ' + ScriptApp.getService().getUrl() + '?page=idea');
     default:
       if (normalized.startsWith('🔄 замена')) return sendSubstitute(chatId, msgRaw);
       return sendMenu(chatId);

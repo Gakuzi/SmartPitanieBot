@@ -15,6 +15,18 @@ function showAdminPanel() {
   SpreadsheetApp.getUi().showModalDialog(html, 'Центр управления ботом');
 }
 
+function openProjectManagerWeb() {
+  const url = ScriptApp.getService().getUrl() + '?page=project-manager';
+  const html = HtmlService.createHtmlOutput(`<a href="${url}" target="_blank">Открыть менеджер проекта</a><script>window.open('${url}','_blank');google.script.host.close();</script>`).setWidth(300).setHeight(80);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Менеджер проекта');
+}
+
+function openIdeaDoc() {
+  const url = ScriptApp.getService().getUrl() + '?page=idea';
+  const html = HtmlService.createHtmlOutput(`<a href="${url}" target="_blank">Открыть ТЗ</a><script>window.open('${url}','_blank');google.script.host.close();</script>`).setWidth(300).setHeight(80);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Техническое задание');
+}
+
 /**
  * Обрабатывает действия, вызванные из боковой панели администратора.
  * @param {string} actionName - Имя действия, которое нужно выполнить.
@@ -87,6 +99,8 @@ function createCustomMenu() {
   const adminMenu = ui.createMenu('Администрирование');
 
   adminMenu.addItem('Открыть панель администратора', 'showAdminPanel');
+  adminMenu.addItem('Открыть Менеджер проекта', 'openProjectManagerWeb');
+  adminMenu.addItem('Открыть ТЗ (idea)', 'openIdeaDoc');
   adminMenu.addSeparator();
   adminMenu.addItem('Настроить таблицу', 'setupAdminSheet');
   adminMenu.addItem('Управление вебхуком', 'showWebhookManagerDialog');
@@ -423,7 +437,8 @@ function getMenu(chatId) {
   return {
     keyboard: [
       [{ text: '🍽 Показать меню' }, { text: '🛒 Список покупок' }],
-      [{ text: '⚙️ Настройки' }, { text: '🔄 Замена продукта' }]
+      [{ text: '⚙️ Настройки' }, { text: '🔄 Замена продукта' }],
+      [{ text: '🗂 Менеджер проекта' }, { text: '📄 Техническое задание' }]
     ],
     resize_keyboard: true,
     one_time_keyboard: false

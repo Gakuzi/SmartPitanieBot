@@ -15,6 +15,9 @@ function doGet(e) {
     if (page === 'project-manager') {
       return HtmlService.createHtmlOutputFromFile('project-manager').setTitle('Менеджер проекта SmartPit');
     }
+    if (page === 'idea') {
+      return HtmlService.createHtmlOutputFromFile('idea').setTitle('Техническое задание SmartPit');
+    }
     if (page === 'admin') {
       return HtmlService.createHtmlOutputFromFile('AdminPanel').setTitle('Центр администрирования SmartPit');
     }
