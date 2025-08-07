@@ -516,32 +516,10 @@ function handleAdminCallback(callbackQuery) {
  */
 function handleAdminDiagnostics(chatId) {
   sendText(chatId, '🔧 Запуск диагностики системы...');
-  
   try {
-    const results = runFullSystemTest();
-    
-    let message = '📊 *Результаты диагностики системы:*\n\n';
-    message += `✅ Пройдено: ${results.passed}\n`;
-    message += `❌ Провалено: ${results.failed}\n`;
-    message += `📈 Общий результат: ${results.passed}/${results.tests.length}\n\n`;
-    
-    if (results.tests) {
-      message += '*Детальные результаты:*\n';
-      results.tests.forEach(test => {
-        const status = test.passed ? '✅' : '❌';
-        message += `${status} ${test.name}: ${test.message}\n`;
-      });
-    }
-    
-    if (results.errors && results.errors.length > 0) {
-      message += '\n*Ошибки:*\n';
-      results.errors.forEach(error => {
-        message += `❌ ${error}\n`;
-      });
-    }
-    
-    sendText(chatId, message);
-    
+    const full = Core.Diagnostics && Core.Diagnostics.runFull ? Core.Diagnostics.runFull() : { ok: false };
+    const reportText = Core.Diagnostics && Core.Diagnostics.formatReportForTelegram ? Core.Diagnostics.formatReportForTelegram(full) : 'Диагностика недоступна';
+    sendText(chatId, reportText);
   } catch (error) {
     sendText(chatId, '❌ Ошибка при выполнении диагностики: ' + error.message);
   }
@@ -630,35 +608,17 @@ function handleAdminPanel(chatId) {
  * Обработка восстановления листов
  */
 function handleAdminRestoreSheets(chatId) {
-  sendText(chatId, '🔄 Запуск восстановления структуры листов...');
-  
+  sendText(chatId, '🔄 Запуск авто-восстановления...');
   try {
-    const results = restoreTableStructure();
-    
-    let message = '📋 *Результаты восстановления:*\n\n';
-    
-    if (results.restored && results.restored.length > 0) {
-      message += '✅ *Восстановлено:*\n';
-      results.restored.forEach(item => {
-        message += `• ${item}\n`;
-      });
+    const res = Core.Diagnostics && Core.Diagnostics.autoRepair ? Core.Diagnostics.autoRepair({}) : { success: false, actions: [], errors: ['Модуль Diagnostics недоступен'] };
+    let msg = res.success ? '✅ Восстановление успешно' : '⚠️ Восстановление завершено с ошибками';
+    if (res.actions && res.actions.length) {
+      msg += '\nДействия:\n- ' + res.actions.join('\n- ');
     }
-    
-    if (results.errors && results.errors.length > 0) {
-      message += '\n❌ *Ошибки:*\n';
-      results.errors.forEach(error => {
-        message += `• ${error}\n`;
-      });
+    if (res.errors && res.errors.length) {
+      msg += '\nОшибки:\n- ' + res.errors.join('\n- ');
     }
-    
-    if (results.success) {
-      message += '\n✅ Восстановление завершено успешно!';
-    } else {
-      message += '\n⚠️ Восстановление завершено с ошибками.';
-    }
-    
-    sendText(chatId, message);
-    
+    sendText(chatId, msg);
   } catch (error) {
     sendText(chatId, '❌ Ошибка при восстановлении: ' + error.message);
   }
