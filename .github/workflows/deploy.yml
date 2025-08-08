@@ -3,23 +3,33 @@ name: Deploy to Google Apps Script
 on:
   push:
     branches:
-      - main  # или другая ветка, с которой хочешь пушить
+      - main
+
+  schedule:
+    - cron: '0 4 * * *' # каждый день в 07:00 по Москве (UTC+3)
+
+  workflow_dispatch: {} # ручной запуск из интерфейса GitHub
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    concurrency:
+      group: gas-deploy-${{ github.ref }}
+      cancel-in-progress: true
+
     steps:
-      - name: Checkout repository
+      - name: Получение репозитория
         uses: actions/checkout@v3
 
-      - name: Restore .clasprc.json from Secret
+      - name: Восстановление .clasprc.json из секрета
         run: echo "${{ secrets.CLASPRC_JSON_B64 }}" | base64 --decode > "$HOME/.clasprc.json"
 
-      - name: Install clasp globally
+      - name: Установка clasp
         run: npm install -g @google/clasp
 
-      - name: Push to Google Apps Script
+      - name: Синхронизация с Google Apps Script
         run: clasp push
-      - name: Deploy to Google Apps Script
+
+      - name: Публикация новой версии
         run: clasp deploy
