@@ -1,15 +1,26 @@
-# Локальные конфиги и токены
+# Локальные Google токены и конфигурации
 .clasprc.json
 client_secret_*.json
 clasprc.b64
 
-# Системные и IDE-файлы
+# Конфиги Clasp
+.clasp.json
+
+# Node.js зависимости и артефакты
+node_modules/
+package-lock.json
+npm-debug.log
+
+# IDE и системные файлы
 .DS_Store
 .vscode/
 .idea/
 
-# Node.js
-node_modules/
-
-# Логи
+# Logs и временные файлы
 *.log
+*.tmp
+
+# ОС и сборочные каталоги
+dist/
+build/
+.env
