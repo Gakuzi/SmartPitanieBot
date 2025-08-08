@@ -1,0 +1,25 @@
+name: Deploy to Google Apps Script
+
+on:
+  push:
+    branches:
+      - main  # или другая ветка, с которой хочешь пушить
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Restore .clasprc.json from Secret
+        run: echo "${{ secrets.CLASPRC_JSON_B64 }}" | base64 --decode > "$HOME/.clasprc.json"
+
+      - name: Install clasp globally
+        run: npm install -g @google/clasp
+
+      - name: Push to Google Apps Script
+        run: clasp push
+      - name: Deploy to Google Apps Script
+        run: clasp deploy

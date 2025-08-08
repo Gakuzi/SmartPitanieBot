@@ -1,0 +1,15 @@
+# Локальные конфиги и токены
+.clasprc.json
+client_secret_*.json
+clasprc.b64
+
+# Системные и IDE-файлы
+.DS_Store
+.vscode/
+.idea/
+
+# Node.js
+node_modules/
+
+# Логи
+*.log

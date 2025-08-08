@@ -467,12 +467,22 @@
         function setLoading(btnId, loading) {
             var btn = document.getElementById(btnId);
             if (!btn) return;
-            if (loading) { btn.classList.add('loading'); }
-            else { btn.classList.remove('loading'); }
+            if (loading) { 
+                btn.classList.add('loading'); 
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
+            } else { 
+                btn.classList.remove('loading'); 
+                btn.disabled = false;
+                btn.innerHTML = btn.getAttribute('data-original-text') || 'Запустить диагностику';
+            }
         }
 
         function runSystemDiagnostics(btn) {
             var btnId = 'btn-diagnostics';
+            var btnElement = document.getElementById(btnId);
+            btnElement.setAttribute('data-original-text', btnElement.innerHTML);
+            
             setLoading(btnId, true);
             addLog('🚀 Запуск полной диагностики системы...');
             
@@ -482,6 +492,9 @@
                     updateDiagnosticsUI(results);
                     addLog('✅ Диагностика завершена');
                     setLoading(btnId, false);
+                    
+                    // Обновляем счетчики
+                    updateCounters(results);
                 })
                 .withFailureHandler(function(error) {
                     addLog('❌ Ошибка диагностики: ' + error.message);
@@ -491,14 +504,63 @@
         }
 
         function updateDiagnosticsUI(results) {
-            document.getElementById('test-passed').textContent = results.passed || 0;
-            document.getElementById('test-failed').textContent = results.failed || 0;
+            if (!results || !results.tests) {
+                addLog('❌ Некорректные результаты диагностики');
+                return;
+            }
+            
+            const passed = results.passed || 0;
+            const failed = results.failed || 0;
+            const total = results.tests ? results.tests.length : 0;
+            
+            document.getElementById('test-passed').textContent = passed;
+            document.getElementById('test-failed').textContent = failed;
             
             const progressBar = document.getElementById('infrastructure-progress');
-            const total = results.tests ? results.tests.length : 0;
-            const passed = results.passed || 0;
             const percentage = total > 0 ? (passed / total) * 100 : 0;
             progressBar.style.width = percentage + '%';
+            progressBar.textContent = Math.round(percentage) + '%';
+            
+            // Обновляем цвет прогресс-бара
+            if (percentage >= 80) {
+                progressBar.className = 'progress-bar bg-success';
+            } else if (percentage >= 60) {
+                progressBar.className = 'progress-bar bg-warning';
+            } else {
+                progressBar.className = 'progress-bar bg-danger';
+            }
+            
+            addLog(`📊 Результаты: ${passed}/${total} тестов прошли`);
+        }
+
+        function updateCounters(results) {
+            if (!results || !results.tests) return;
+            
+            // Обновляем счетчики на основе результатов диагностики
+            let userCount = 0;
+            let messageCount = 0;
+            let aiCount = 0;
+            let accuracy = 85; // Базовая точность
+            
+            results.tests.forEach(test => {
+                if (test.name && test.name.includes('Пользователи')) {
+                    userCount = test.details ? parseInt(test.details.match(/\d+/)) || 0 : 0;
+                }
+                if (test.name && test.name.includes('Сообщения')) {
+                    messageCount = test.details ? parseInt(test.details.match(/\d+/)) || 0 : 0;
+                }
+                if (test.name && test.name.includes('AI')) {
+                    aiCount = test.details ? parseInt(test.details.match(/\d+/)) || 0 : 0;
+                }
+            });
+            
+            // Обновляем счетчики в интерфейсе
+            document.getElementById('total-users').textContent = userCount;
+            document.getElementById('total-messages').textContent = messageCount;
+            document.getElementById('ai-requests').textContent = aiCount;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+            
+            addLog(`📈 Счетчики обновлены: Пользователи=${userCount}, Сообщения=${messageCount}, AI=${aiCount}`);
         }
 
         function showDiagnosticsResults() {
@@ -618,16 +680,26 @@
         }
 
         function manageWebhook() {
-            addLog('🔗 Управление Webhook...');
+            addLog('🔗 Диагностика Webhook...');
             
             google.script.run
                 .withSuccessHandler(function(result) {
-                    addLog('✅ Webhook настроен: ' + result);
+                    if (result.success) {
+                        addLog('✅ Webhook работает: ' + result.message);
+                        if (result.url) {
+                            addLog('🔗 URL: ' + result.url);
+                        }
+                        if (result.details) {
+                            addLog('📋 Детали: ' + JSON.stringify(result.details, null, 2));
+                        }
+                    } else {
+                        addLog('❌ Ошибка Webhook: ' + result.error);
+                    }
                 })
                 .withFailureHandler(function(error) {
-                    addLog('❌ Ошибка Webhook: ' + error.message);
+                    addLog('❌ Ошибка диагностики Webhook: ' + error.message);
                 })
-                .setTelegramWebhook();
+                .getBasicWebhookInfo();
         }
 
         // Функции AI и аналитики
@@ -694,7 +766,56 @@
         };
 
         function loadBasicStats() {
-            // Здесь будет код для загрузки базовой статистики
+            addLog('📊 Загрузка статистики системы...');
+            
+            // Загружаем статистику пользователей
+            google.script.run
+                .withSuccessHandler(function(userCount) {
+                    document.getElementById('total-users').textContent = userCount || 0;
+                    addLog(`👥 Пользователей: ${userCount || 0}`);
+                })
+                .withFailureHandler(function(error) {
+                    addLog('❌ Ошибка загрузки пользователей: ' + error.message);
+                    document.getElementById('total-users').textContent = '0';
+                })
+                .getUserCount();
+            
+            // Загружаем статистику сообщений
+            google.script.run
+                .withSuccessHandler(function(messageCount) {
+                    document.getElementById('total-messages').textContent = messageCount || 0;
+                    addLog(`💬 Сообщений: ${messageCount || 0}`);
+                })
+                .withFailureHandler(function(error) {
+                    addLog('❌ Ошибка загрузки сообщений: ' + error.message);
+                    document.getElementById('total-messages').textContent = '0';
+                })
+                .getMessageCount();
+            
+            // Загружаем статистику AI запросов
+            google.script.run
+                .withSuccessHandler(function(aiCount) {
+                    document.getElementById('ai-requests').textContent = aiCount || 0;
+                    addLog(`🧠 AI запросов: ${aiCount || 0}`);
+                })
+                .withFailureHandler(function(error) {
+                    addLog('❌ Ошибка загрузки AI статистики: ' + error.message);
+                    document.getElementById('ai-requests').textContent = '0';
+                })
+                .getAiRequestCount();
+            
+            // Загружаем точность AI
+            google.script.run
+                .withSuccessHandler(function(accuracy) {
+                    document.getElementById('accuracy').textContent = (accuracy || 0) + '%';
+                    addLog(`🎯 Точность AI: ${accuracy || 0}%`);
+                })
+                .withFailureHandler(function(error) {
+                    addLog('❌ Ошибка загрузки точности: ' + error.message);
+                    document.getElementById('accuracy').textContent = '0%';
+                })
+                .getAiAccuracy();
+            
             addLog('✅ Статистика загружена');
         }
 

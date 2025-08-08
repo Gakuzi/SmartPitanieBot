@@ -1,6 +1,7 @@
 /**
  * @file 0_onOpen.js
  * @description Функции, которые выполняются при открытии Google Sheets.
+ * UPDATED: 2024-01-08T02:30:00.000Z - MENU CLEANUP
  */
 
 /**
@@ -12,7 +13,9 @@ function onOpen() {
   ui.createMenu('SmartPit Console')
     .addItem('Открыть консоль управления', 'showAdminPanel')
     .addItem('Открыть менеджер проекта', 'openProjectManagerWeb')
-    .addItem('Открыть ТЗ (idea)', 'openIdeaDoc')
+    .addItem('Открыть ТЗ', 'openIdeaDoc')
+    .addSeparator()
+    .addItem('🤖 Настройки AI', 'showAiSettingsDialog')
     .addItem('Настройки Webhook', 'showWebhookDialog')
     .addSeparator()
     .addItem('Диагностика системы', 'runQuickDiagnostics')

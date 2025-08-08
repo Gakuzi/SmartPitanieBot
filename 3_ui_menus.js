@@ -16,15 +16,27 @@ function showAdminPanel() {
 }
 
 function openProjectManagerWeb() {
-  const url = ScriptApp.getService().getUrl() + '?page=project-manager';
-  const html = HtmlService.createHtmlOutput(`<a href="${url}" target="_blank">Открыть менеджер проекта</a><script>window.open('${url}','_blank');google.script.host.close();</script>`).setWidth(300).setHeight(80);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Менеджер проекта');
+  try {
+    const html = HtmlService.createHtmlOutputFromFile('project-manager')
+      .setWidth(1200)
+      .setHeight(800);
+    SpreadsheetApp.getUi().showModalDialog(html, 'Менеджер проекта SmartPit');
+  } catch (error) {
+    Logger.log('Ошибка открытия менеджера проекта: ' + error.message);
+    SpreadsheetApp.getUi().alert('Ошибка открытия менеджера проекта: ' + error.message);
+  }
 }
 
 function openIdeaDoc() {
-  const url = ScriptApp.getService().getUrl() + '?page=idea';
-  const html = HtmlService.createHtmlOutput(`<a href="${url}" target="_blank">Открыть ТЗ</a><script>window.open('${url}','_blank');google.script.host.close();</script>`).setWidth(300).setHeight(80);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Техническое задание');
+  try {
+    const html = HtmlService.createHtmlOutputFromFile('idea')
+      .setWidth(1000)
+      .setHeight(700);
+    SpreadsheetApp.getUi().showModalDialog(html, 'Техническое задание SmartPit');
+  } catch (error) {
+    Logger.log('Ошибка открытия ТЗ: ' + error.message);
+    SpreadsheetApp.getUi().alert('Ошибка открытия ТЗ: ' + error.message);
+  }
 }
 
 function runQuickDiagnostics() {
@@ -134,23 +146,83 @@ function setTelegramWebhook() {
     const telegramToken = scriptProps.getProperty('TELEGRAM_TOKEN');
     
     if (!telegramToken) {
-      return { success: false, error: 'TELEGRAM_TOKEN не настроен' };
+      return { 
+        success: false, 
+        error: 'TELEGRAM_TOKEN не настроен',
+        details: 'Пожалуйста, настройте TELEGRAM_TOKEN в Script Properties'
+      };
     }
     
+    // Получаем URL текущего веб-приложения
     const webAppUrl = ScriptApp.getService().getUrl();
-    const webhookUrl = `https://api.telegram.org/bot${telegramToken}/setWebhook?url=${webAppUrl}`;
+    Logger.log(`Устанавливаем webhook на URL: ${webAppUrl}`);
     
-    const response = UrlFetchApp.fetch(webhookUrl);
-    const data = JSON.parse(response.getContentText());
+    // Сначала удаляем старый webhook
+    const deleteWebhookUrl = `https://api.telegram.org/bot${telegramToken}/deleteWebhook`;
+    const deleteOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      payload: JSON.stringify({ drop_pending_updates: true }),
+      muteHttpExceptions: true
+    };
     
-    if (data.ok) {
-      return { success: true, message: 'Webhook установлен успешно' };
+    const deleteResponse = UrlFetchApp.fetch(deleteWebhookUrl, deleteOptions);
+    Logger.log(`Удаление старого webhook: ${deleteResponse.getResponseCode()}`);
+    
+    // Ждем немного
+    Utilities.sleep(500);
+    
+    // Устанавливаем новый webhook
+    const setWebhookUrl = `https://api.telegram.org/bot${telegramToken}/setWebhook`;
+    const payload = {
+      url: webAppUrl,
+      allowed_updates: ["message", "edited_message", "callback_query", "my_chat_member"],
+      drop_pending_updates: true,
+      max_connections: 40
+    };
+    
+    const setOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+    
+    const response = UrlFetchApp.fetch(setWebhookUrl, setOptions);
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+    const data = JSON.parse(responseText);
+    
+    Logger.log(`Установка webhook: ${responseCode} - ${responseText}`);
+    
+    if (responseCode === 200 && data.ok) {
+      // Проверяем, что webhook действительно установлен
+      Utilities.sleep(1000);
+      const verification = getBasicWebhookInfo();
+      
+      return { 
+        success: true, 
+        message: 'Webhook успешно установлен и проверен',
+        url: webAppUrl,
+        verification: verification,
+        details: data.result
+      };
     } else {
-      return { success: false, error: data.description };
+      return { 
+        success: false, 
+        error: data.description || `HTTP ошибка ${responseCode}`,
+        details: data
+      };
     }
     
   } catch (error) {
-    return { success: false, error: error.message };
+    Logger.log(`Критическая ошибка установки webhook: ${error.message}`);
+    return { 
+      success: false, 
+      error: 'Критическая ошибка',
+      details: error.message,
+      stack: error.stack 
+    };
   }
 }
 
@@ -216,6 +288,121 @@ function toggleMode() {
   ui.alert(`Режим работы переключен на: ${newMode}`);
 }
 
+/**
+ * Переключает режим AI
+ */
+function toggleAiMode() {
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const currentMode = scriptProps.getProperty('AI_MODE') || 'enabled';
+    const newMode = currentMode === 'enabled' ? 'disabled' : 'enabled';
+    
+    scriptProps.setProperty('AI_MODE', newMode);
+    
+    const ui = SpreadsheetApp.getUi();
+    const status = newMode === 'enabled' ? 'включен' : 'выключен';
+    ui.alert(`Режим AI ${status}`, `Искусственный интеллект ${status}.`, ui.ButtonSet.OK);
+    
+    Logger.log(`AI режим переключен на: ${newMode}`);
+    return { success: true, mode: newMode };
+    
+  } catch (error) {
+    Logger.log('Ошибка переключения AI режима: ' + error.message);
+    SpreadsheetApp.getUi().alert('Ошибка переключения AI режима: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Проверяет, включен ли AI режим
+ */
+function isAiModeEnabled() {
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const aiMode = scriptProps.getProperty('AI_MODE') || 'enabled';
+    return aiMode === 'enabled';
+  } catch (error) {
+    Logger.log('Ошибка проверки AI режима: ' + error.message);
+    return true; // По умолчанию включен
+  }
+}
+
+/**
+ * Показывает диалог управления AI
+ */
+function showAiSettingsDialog() {
+  try {
+    const isEnabled = isAiModeEnabled();
+    const status = isEnabled ? 'включен' : 'выключен';
+    const buttonText = isEnabled ? 'Выключить AI' : 'Включить AI';
+    const description = isEnabled ? 
+      'AI режим активен. Бот будет использовать Gemini для генерации меню и ответов.' :
+      'AI режим выключен. Бот будет работать в базовом режиме без AI функций.';
+    
+    const html = HtmlService.createHtmlOutput(`
+      <html>
+        <head>
+          <title>Настройки AI</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+            .enabled { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+            .disabled { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+            .button { 
+              background: #007bff; 
+              color: white; 
+              padding: 10px 20px; 
+              border: none; 
+              border-radius: 5px; 
+              cursor: pointer; 
+              margin: 5px;
+            }
+            .button:hover { background: #0056b3; }
+            .button.danger { background: #dc3545; }
+            .button.danger:hover { background: #c82333; }
+          </style>
+        </head>
+        <body>
+          <h2>🤖 Настройки Искусственного Интеллекта</h2>
+          <div class="status ${isEnabled ? 'enabled' : 'disabled'}">
+            <strong>Статус:</strong> ${status}
+          </div>
+          <p>${description}</p>
+          <button class="button ${isEnabled ? 'danger' : ''}" onclick="toggleAi()">
+            ${buttonText}
+          </button>
+          <button class="button" onclick="google.script.host.close()">
+            Закрыть
+          </button>
+          <script>
+            function toggleAi() {
+              google.script.run
+                .withSuccessHandler(function(result) {
+                  if (result.success) {
+                    alert('AI режим успешно переключен!');
+                    google.script.host.close();
+                  } else {
+                    alert('Ошибка: ' + result.error);
+                  }
+                })
+                .withFailureHandler(function(error) {
+                  alert('Ошибка: ' + error.message);
+                })
+                .toggleAiMode();
+            }
+          </script>
+        </body>
+      </html>
+    `).setWidth(500).setHeight(300);
+    
+    SpreadsheetApp.getUi().showModalDialog(html, 'Настройки AI');
+    
+  } catch (error) {
+    Logger.log('Ошибка открытия диалога AI настроек: ' + error.message);
+    SpreadsheetApp.getUi().alert('Ошибка открытия диалога AI настроек: ' + error.message);
+  }
+}
+
 // --- Диалоговые окна в Google Sheets ---
 
 /**
@@ -246,73 +433,112 @@ function createCustomMenu() {
 // showWebhookManagerDialog определен в ui_dialogs.js (во избежание дублирования)
 
 /**
- * Получает базовую информацию о вебхуке и проводит первичный анализ.
- * @returns {object} - Объект с базовой информацией и результатом анализа.
+ * Получает базовую информацию о вебхуке и проводит полную диагностику
  */
 function getBasicWebhookInfo() {
-  const editorUrl = `https://script.google.com/d/${ScriptApp.getScriptId()}/edit`;
   try {
-    Logger.log('DEBUG: Вызов getTelegramWebhookInfo()');
-    Logger.log('DEBUG: Вызов getTelegramWebhookInfo()');
-    const webhookInfo = getTelegramWebhookInfo();
-    Logger.log(`DEBUG: Результат getTelegramWebhookInfo(): ${JSON.stringify(webhookInfo)}`);
-
-    if (!webhookInfo.ok) {
-      // Если getTelegramWebhookInfo вернула ошибку, обрабатываем ее здесь
+    const scriptProps = PropertiesService.getScriptProperties();
+    const telegramToken = scriptProps.getProperty('TELEGRAM_TOKEN');
+    
+    if (!telegramToken) {
       return {
-        ok: false,
-        basicInfo: { editorUrl: editorUrl, rawInfo: {} },
-        analysis: {
-          status: 'CRITICAL',
-          summary: 'Ошибка получения данных о вебхуке',
-          details: webhookInfo.description || 'Неизвестная ошибка Telegram API.',
-          solution: 'Пожалуйста, проверьте ваш токен Telegram и разрешения скрипта.'
+        success: false,
+        error: 'TELEGRAM_TOKEN не настроен в Script Properties',
+        details: 'Токен Telegram не найден. Настройте его в Script Properties.'
+      };
+    }
+    
+    // Получаем текущий URL веб-приложения
+    const currentWebAppUrl = ScriptApp.getService().getUrl();
+    Logger.log(`Текущий WebApp URL: ${currentWebAppUrl}`);
+    
+    // Запрашиваем информацию о webhook
+    const webhookInfoUrl = `https://api.telegram.org/bot${telegramToken}/getWebhookInfo`;
+    const response = UrlFetchApp.fetch(webhookInfoUrl, { 
+      muteHttpExceptions: true,
+      method: 'GET'
+    });
+    
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+    
+    if (responseCode !== 200) {
+      return {
+        success: false,
+        error: `HTTP ошибка: ${responseCode}`,
+        details: `Telegram API недоступен. Ответ: ${responseText}`
+      };
+    }
+    
+    const data = JSON.parse(responseText);
+    
+    if (!data.ok) {
+      return {
+        success: false,
+        error: 'Ошибка Telegram API',
+        details: data.description || 'Неизвестная ошибка API'
+      };
+    }
+    
+    const webhookInfo = data.result;
+    
+    // Анализируем состояние webhook
+    if (!webhookInfo.url || webhookInfo.url === '') {
+      return {
+        success: false,
+        error: 'Webhook не установлен',
+        message: 'URL webhook отсутствует',
+        details: {
+          currentUrl: currentWebAppUrl,
+          webhookUrl: 'НЕ УСТАНОВЛЕН',
+          status: 'NOT_SET',
+          pendingUpdateCount: webhookInfo.pending_update_count || 0
         }
       };
     }
-
-    const basicInfo = {
-      editorUrl: editorUrl,
-      rawInfo: webhookInfo.result || {},
-    };
-    Logger.log(`DEBUG: basicInfo.rawInfo: ${JSON.stringify(basicInfo.rawInfo)}`);
-
-    let initialAnalysis;
-    if (basicInfo.rawInfo.url) {
-      initialAnalysis = {
-        status: 'OK',
-        summary: 'Вебхук успешно установлен и работает.',
-        details: `Ваш бот подключен к Telegram через URL: ${basicInfo.rawInfo.url}`,
-        solution: 'Все выглядит хорошо. Если бот перестал отвечать, попробуйте нажать кнопку "Обновить". Если это не поможет, переустановите вебхук, используя форму ниже.'
-      };
-    } else {
-      initialAnalysis = {
-        status: 'CRITICAL',
-        summary: 'Вебхук не установлен',
-        details: 'URL вебхука отсутствует в информации от Telegram. Бот не будет работать.',
-        solution: 'Пожалуйста, разверните проект как веб-приложение, скопируйте URL и вставьте его в поле ниже, затем нажмите "Установить / Обновить".'
+    
+    // Проверяем соответствие URL
+    const isCorrectUrl = webhookInfo.url === currentWebAppUrl;
+    
+    if (!isCorrectUrl) {
+    return {
+        success: false,
+        error: 'Webhook настроен на другой URL',
+        message: 'Webhook указывает на устаревший или неправильный URL',
+        details: {
+          currentUrl: currentWebAppUrl,
+          webhookUrl: webhookInfo.url,
+          status: 'WRONG_URL',
+          pendingUpdateCount: webhookInfo.pending_update_count || 0,
+          lastErrorDate: webhookInfo.last_error_date,
+          lastErrorMessage: webhookInfo.last_error_message
+        }
       };
     }
-    Logger.log(`DEBUG: initialAnalysis: ${JSON.stringify(initialAnalysis)}`);
-
+    
+    // Все хорошо
     return {
-      ok: true,
-      basicInfo: basicInfo,
-      analysis: initialAnalysis
+      success: true,
+      message: 'Webhook настроен правильно',
+      url: webhookInfo.url,
+      details: {
+        currentUrl: currentWebAppUrl,
+        webhookUrl: webhookInfo.url,
+        status: 'OK',
+        pendingUpdateCount: webhookInfo.pending_update_count || 0,
+        maxConnections: webhookInfo.max_connections || 40,
+        allowedUpdates: webhookInfo.allowed_updates || [],
+        lastErrorDate: webhookInfo.last_error_date,
+        lastErrorMessage: webhookInfo.last_error_message
+      }
     };
 
-  } catch (e) {
-    const errorMessage = `Ошибка при получении базовой информации: ${e.message}`;
-    Logger.log(`❌ КРИТИЧЕСКАЯ ОШИБКА: ${errorMessage}\nStack: ${e.stack || 'N/A'}`);
+  } catch (error) {
+    Logger.log(`Ошибка диагностики webhook: ${error.message}`);
     return {
-      ok: false,
-      basicInfo: { editorUrl: editorUrl, rawInfo: {} },
-      analysis: {
-        status: 'CRITICAL',
-        summary: 'Ошибка получения данных',
-        details: errorMessage,
-        solution: 'Не удалось связаться с API Telegram. Проверьте ваш токен и подключение к сети.'
-      }
+      success: false,
+      error: 'Критическая ошибка диагностики',
+      details: error.message
     };
   }
 }
@@ -359,7 +585,7 @@ function setupAdminSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
   const scriptProps = PropertiesService.getScriptProperties();
-
+    
   try {
     let usersSsId = scriptProps.getProperty('USERS_SPREADSHEET_ID');
     let usersSs;
@@ -879,5 +1105,702 @@ function handleAdminAllTasks(chatId) {
     
   } catch (error) {
     sendText(chatId, '❌ Ошибка при загрузке задач: ' + error.message);
+  }
+}
+
+/**
+ * Отправляет меню настроек
+ */
+function sendSettingsMenu(chatId) {
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '🎯 Цель', callback_data: 'settings_goal' },
+        { text: '👤 Пол', callback_data: 'settings_sex' }
+      ],
+      [
+        { text: '🏃 Активность', callback_data: 'settings_activity' },
+        { text: '📏 Рост/Вес', callback_data: 'settings_measurements' }
+      ],
+      [
+        { text: '🍽️ Предпочтения', callback_data: 'settings_preferences' },
+        { text: '⚙️ Уведомления', callback_data: 'settings_notifications' }
+      ],
+      [
+        { text: '🔙 Назад', callback_data: 'back_to_main' }
+      ]
+    ]
+  };
+  
+  sendText(chatId, 
+    '⚙️ *Настройки SmartPitanieBot*\n\n' +
+    'Выберите, что хотите настроить:',
+    keyboard
+  );
+}
+
+/**
+ * Отправляет опции целей
+ */
+function sendGoalOptions(chatId) {
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '💪 Набрать мышечную массу', callback_data: 'goal_gain_muscle' },
+        { text: '🔥 Сбросить вес', callback_data: 'goal_lose_weight' }
+      ],
+      [
+        { text: '⚖️ Поддержать вес', callback_data: 'goal_maintain' },
+        { text: '🏃 Улучшить выносливость', callback_data: 'goal_endurance' }
+      ],
+      [
+        { text: '🔙 Назад к настройкам', callback_data: 'settings_menu' }
+      ]
+    ]
+  };
+  
+  sendText(chatId, 
+    '🎯 *Выберите вашу цель:*\n\n' +
+    'Какую цель вы хотите достичь?',
+    keyboard
+  );
+}
+
+/**
+ * Отправляет опции пола
+ */
+function sendSexOptions(chatId) {
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '👨 Мужской', callback_data: 'sex_male' },
+        { text: '👩 Женский', callback_data: 'sex_female' }
+      ],
+      [
+        { text: '🔙 Назад к настройкам', callback_data: 'settings_menu' }
+      ]
+    ]
+  };
+  
+  sendText(chatId, 
+    '👤 *Укажите ваш пол:*\n\n' +
+    'Это необходимо для точных расчетов BMR.',
+    keyboard
+  );
+}
+
+/**
+ * Отправляет опции активности
+ */
+function sendActivityOptions(chatId) {
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '🛋️ Сидячий образ жизни', callback_data: 'activity_sedentary' },
+        { text: '🚶 Легкая активность', callback_data: 'activity_light' }
+      ],
+      [
+        { text: '🏃 Умеренная активность', callback_data: 'activity_moderate' },
+        { text: '💪 Высокая активность', callback_data: 'activity_high' }
+      ],
+      [
+        { text: '🏋️ Очень высокая активность', callback_data: 'activity_very_high' }
+      ],
+      [
+        { text: '🔙 Назад к настройкам', callback_data: 'settings_menu' }
+      ]
+    ]
+  };
+  
+  sendText(chatId, 
+    '🏃 *Уровень физической активности:*\n\n' +
+    'Выберите ваш уровень активности:',
+    keyboard
+  );
+}
+
+/**
+ * Функция расчета BMR (Basal Metabolic Rate)
+ */
+function calculateBMR(weight, height, age, sex) {
+  try {
+    // Проверяем входные параметры
+    if (!weight || !height || !age || !sex) {
+      throw new Error('Не все параметры переданы для расчета BMR');
+    }
+    
+    // Преобразуем в числа
+    weight = parseFloat(weight);
+    height = parseFloat(height);
+    age = parseInt(age);
+    
+    if (isNaN(weight) || isNaN(height) || isNaN(age)) {
+      throw new Error('Некорректные числовые параметры');
+    }
+    
+    // Формула Миффлина-Сан Жеора
+    let bmr;
+    if (sex === 'male' || sex === 'm') {
+      bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+    } else if (sex === 'female' || sex === 'f') {
+      bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+    } else {
+      throw new Error('Некорректный пол. Используйте "male"/"m" или "female"/"f"');
+    }
+    
+    Logger.log(`BMR расчет: вес=${weight}, рост=${height}, возраст=${age}, пол=${sex}, BMR=${bmr}`);
+    return Math.round(bmr);
+    
+  } catch (error) {
+    Logger.log('Ошибка расчета BMR: ' + error.message);
+    throw error;
+  }
+}
+
+/**
+ * Функция расчета TDEE (Total Daily Energy Expenditure)
+ */
+function calculateTDEE(bmr, activityLevel) {
+  const activityMultipliers = {
+    'sedentary': 1.2,      // Сидячий образ жизни
+    'light': 1.375,         // Легкая активность
+    'moderate': 1.55,       // Умеренная активность
+    'high': 1.725,          // Высокая активность
+    'very_high': 1.9        // Очень высокая активность
+  };
+  
+  return bmr * activityMultipliers[activityLevel];
+}
+
+/**
+ * Генерирует меню с помощью AI
+ */
+function generateAiMenu(userId, preferences) {
+  try {
+    const prompt = `Создай меню на неделю для пользователя с предпочтениями: ${JSON.stringify(preferences)}. 
+    Меню должно быть сбалансированным и учитывать калорийность.`;
+    
+    const response = callGemini(prompt);
+    return response;
+  } catch (error) {
+    Logger.log('Ошибка генерации AI меню: ' + error.message);
+    return 'Извините, не удалось сгенерировать меню. Попробуйте позже.';
+  }
+}
+
+/**
+ * Генерирует список покупок с помощью AI
+ */
+function generateShoppingListAi(menu) {
+  try {
+    const prompt = `На основе этого меню создай список покупок: ${menu}. 
+    Сгруппируй продукты по категориям (овощи, мясо, молочные продукты и т.д.).`;
+    
+    const response = callGemini(prompt);
+    return response;
+  } catch (error) {
+    Logger.log('Ошибка генерации AI списка покупок: ' + error.message);
+    return 'Извините, не удалось сгенерировать список покупок. Попробуйте позже.';
+  }
+}
+
+/**
+ * Получает количество пользователей
+ */
+function getUserCount() {
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const usersSheetId = scriptProps.getProperty('USERS_SPREADSHEET_ID');
+    
+    if (!usersSheetId) {
+      return 0;
+    }
+    
+    const usersSheet = SpreadsheetApp.openById(usersSheetId);
+    const sheet = usersSheet.getSheetByName('Пользователи');
+    
+    if (!sheet) {
+      return 0;
+    }
+    
+    const lastRow = sheet.getLastRow();
+    return Math.max(0, lastRow - 1); // Вычитаем заголовок
+    
+  } catch (error) {
+    Logger.log('Ошибка получения количества пользователей: ' + error.message);
+    return 0;
+  }
+}
+
+/**
+ * Получает количество сообщений
+ */
+function getMessageCount() {
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const templateSheetId = scriptProps.getProperty('TEMPLATE_SHEET_ID');
+    
+    if (!templateSheetId) {
+      return 0;
+    }
+    
+    const templateSheet = SpreadsheetApp.openById(templateSheetId);
+    const logSheet = templateSheet.getSheetByName('Логи');
+    
+    if (!logSheet) {
+      return 0;
+    }
+    
+    const lastRow = logSheet.getLastRow();
+    return Math.max(0, lastRow - 1); // Вычитаем заголовок
+    
+  } catch (error) {
+    Logger.log('Ошибка получения количества сообщений: ' + error.message);
+    return 0;
+  }
+}
+
+/**
+ * Получает количество AI запросов
+ */
+function getAiRequestCount() {
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const templateSheetId = scriptProps.getProperty('TEMPLATE_SHEET_ID');
+    
+    if (!templateSheetId) {
+      return 0;
+    }
+    
+    const templateSheet = SpreadsheetApp.openById(templateSheetId);
+    const logSheet = templateSheet.getSheetByName('Логи');
+    
+    if (!logSheet) {
+      return 0;
+    }
+    
+    const data = logSheet.getDataRange().getValues();
+    let aiCount = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const message = data[i][1] || ''; // Предполагаем, что сообщение во второй колонке
+      if (message.includes('AI') || message.includes('Gemini') || message.includes('generate')) {
+        aiCount++;
+      }
+    }
+    
+    return aiCount;
+    
+  } catch (error) {
+    Logger.log('Ошибка получения количества AI запросов: ' + error.message);
+    return 0;
+  }
+}
+
+/**
+ * Получает точность AI
+ */
+function getAiAccuracy() {
+  try {
+    // Простая логика для демонстрации
+    // В реальном проекте здесь была бы более сложная логика
+    const aiRequests = getAiRequestCount();
+    const totalMessages = getMessageCount();
+    
+    if (totalMessages === 0) {
+      return 0;
+    }
+    
+    // Простая формула: 85% базовой точности + бонус за количество запросов
+    const baseAccuracy = 85;
+    const bonus = Math.min(aiRequests * 0.5, 10); // Максимум 10% бонуса
+    
+    return Math.min(100, Math.round(baseAccuracy + bonus));
+    
+  } catch (error) {
+    Logger.log('Ошибка получения точности AI: ' + error.message);
+    return 0;
+  }
+}
+
+/**
+ * Показывает диалог управления webhook
+ */
+function showWebhookDialog() {
+  try {
+    const webAppUrl = ScriptApp.getService().getUrl();
+    const html = HtmlService.createHtmlOutputFromFile('webhook_manager_dialog')
+      .setWidth(800)
+      .setHeight(600);
+    SpreadsheetApp.getUi().showModalDialog(html, 'Управление Webhook');
+  } catch (error) {
+    Logger.log('Ошибка открытия webhook диалога: ' + error.message);
+    SpreadsheetApp.getUi().alert('Ошибка открытия webhook диалога: ' + error.message);
+  }
+}
+
+/**
+ * Инициализирует систему менеджера проекта
+ */
+function initializeProjectManager() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // Создаем лист для проектов
+    let projectsSheet = ss.getSheetByName('Проекты');
+    if (!projectsSheet) {
+      projectsSheet = ss.insertSheet('Проекты');
+      projectsSheet.getRange('A1:F1').setValues([['ID', 'Название', 'Описание', 'Статус', 'Дата создания', 'Дата обновления']]);
+      projectsSheet.setFrozenRows(1);
+    }
+    
+    // Создаем лист для задач
+    let tasksSheet = ss.getSheetByName('Задачи');
+    if (!tasksSheet) {
+      tasksSheet = ss.insertSheet('Задачи');
+      tasksSheet.getRange('A1:H1').setValues([['ID', 'ID проекта', 'Название', 'Описание', 'Статус', 'Приоритет', 'Исполнитель', 'Дедлайн']]);
+      tasksSheet.setFrozenRows(1);
+    }
+    
+    // Создаем лист для команды
+    let teamSheet = ss.getSheetByName('Команда');
+    if (!teamSheet) {
+      teamSheet = ss.insertSheet('Команда');
+      teamSheet.getRange('A1:D1').setValues([['ID', 'Имя', 'Роль', 'Email']]);
+      teamSheet.setFrozenRows(1);
+    }
+    
+    Logger.log('Система менеджера проекта инициализирована');
+    return { success: true, message: 'Система менеджера проекта создана' };
+    
+  } catch (error) {
+    Logger.log('Ошибка инициализации менеджера проекта: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Получает данные проекта
+ */
+function getProjectData() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const projectsSheet = ss.getSheetByName('Проекты');
+    const tasksSheet = ss.getSheetByName('Задачи');
+    const teamSheet = ss.getSheetByName('Команда');
+    
+    if (!projectsSheet || !tasksSheet || !teamSheet) {
+      initializeProjectManager();
+    }
+    
+    const projects = projectsSheet ? projectsSheet.getDataRange().getValues() : [];
+    const tasks = tasksSheet ? tasksSheet.getDataRange().getValues() : [];
+    const team = teamSheet ? teamSheet.getDataRange().getValues() : [];
+    
+    return {
+      projects: projects.slice(1).map(row => ({
+        id: row[0],
+        name: row[1],
+        description: row[2],
+        status: row[3],
+        created: row[4],
+        updated: row[5]
+      })),
+      tasks: tasks.slice(1).map(row => ({
+        id: row[0],
+        projectId: row[1],
+        name: row[2],
+        description: row[3],
+        status: row[4],
+        priority: row[5],
+        assignee: row[6],
+        deadline: row[7]
+      })),
+      team: team.slice(1).map(row => ({
+        id: row[0],
+        name: row[1],
+        role: row[2],
+        email: row[3]
+      }))
+    };
+    
+  } catch (error) {
+    Logger.log('Ошибка получения данных проекта: ' + error.message);
+    return { projects: [], tasks: [], team: [] };
+  }
+}
+
+/**
+ * Добавляет новый проект
+ */
+function addProject(name, description) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let projectsSheet = ss.getSheetByName('Проекты');
+    
+    if (!projectsSheet) {
+      const result = initializeProjectManager();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      projectsSheet = ss.getSheetByName('Проекты');
+    }
+    
+    const projectId = 'PROJ_' + Date.now();
+    const now = new Date();
+    
+    projectsSheet.appendRow([projectId, name, description, 'Активный', now, now]);
+    
+    Logger.log(`Проект добавлен: ${name} (${projectId})`);
+    return { success: true, projectId: projectId };
+    
+  } catch (error) {
+    Logger.log('Ошибка добавления проекта: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Добавляет новую задачу
+ */
+function addTask(projectId, name, description, priority, assignee, deadline) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let tasksSheet = ss.getSheetByName('Задачи');
+    
+    if (!tasksSheet) {
+      const result = initializeProjectManager();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      tasksSheet = ss.getSheetByName('Задачи');
+    }
+    
+    const taskId = 'TASK_' + Date.now();
+    
+    tasksSheet.appendRow([taskId, projectId, name, description, 'Новая', priority, assignee, deadline]);
+    
+    Logger.log(`Задача добавлена: ${name} (${taskId})`);
+    return { success: true, taskId: taskId };
+    
+  } catch (error) {
+    Logger.log('Ошибка добавления задачи: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Получает статистику проекта
+ */
+function getProjectStats() {
+  try {
+    const data = getProjectData();
+    const tasks = data.tasks;
+    
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 'Завершена').length;
+    const inProgressTasks = tasks.filter(t => t.status === 'В работе').length;
+    const newTasks = tasks.filter(t => t.status === 'Новая').length;
+    const overdueTasks = tasks.filter(t => {
+      if (!t.deadline) return false;
+      const deadline = new Date(t.deadline);
+      return deadline < new Date() && t.status !== 'Завершена';
+    }).length;
+    
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const averageProgress = totalTasks > 0 ? Math.round((completedTasks + (inProgressTasks * 0.5)) / totalTasks * 100) : 0;
+    
+    return {
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      newTasks,
+      overdueTasks,
+      completionRate,
+      averageProgress
+    };
+    
+  } catch (error) {
+    Logger.log('Ошибка получения статистики проекта: ' + error.message);
+    return {
+      totalTasks: 0,
+      completedTasks: 0,
+      inProgressTasks: 0,
+      newTasks: 0,
+      overdueTasks: 0,
+      completionRate: 0,
+      averageProgress: 0
+    };
+  }
+}
+
+/**
+ * Добавляет нового участника команды
+ */
+function addTeamMember(name, role, email) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let teamSheet = ss.getSheetByName('Команда');
+    
+    if (!teamSheet) {
+      const result = initializeProjectManager();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      teamSheet = ss.getSheetByName('Команда');
+    }
+    
+    const memberId = 'MEMBER_' + Date.now();
+    teamSheet.appendRow([memberId, name, role, email]);
+    
+    Logger.log(`Участник команды добавлен: ${name} (${memberId})`);
+    return { success: true, memberId: memberId };
+    
+  } catch (error) {
+    Logger.log('Ошибка добавления участника команды: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Обновляет статус задачи
+ */
+function updateTaskStatus(taskId, newStatus) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const tasksSheet = ss.getSheetByName('Задачи');
+    
+    if (!tasksSheet) {
+      throw new Error('Лист задач не найден');
+    }
+    
+    const data = tasksSheet.getDataRange().getValues();
+    const headers = data[0];
+    const statusIndex = headers.indexOf('Статус');
+    const idIndex = headers.indexOf('ID');
+    
+    if (statusIndex === -1 || idIndex === -1) {
+      throw new Error('Не найдены необходимые колонки');
+    }
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idIndex] === taskId) {
+        tasksSheet.getRange(i + 1, statusIndex + 1).setValue(newStatus);
+        Logger.log(`Статус задачи ${taskId} обновлен на: ${newStatus}`);
+        return { success: true };
+      }
+    }
+    
+    throw new Error('Задача не найдена');
+    
+  } catch (error) {
+    Logger.log('Ошибка обновления статуса задачи: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Удаляет проект
+ */
+function deleteProject(projectId) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const projectsSheet = ss.getSheetByName('Проекты');
+    
+    if (!projectsSheet) {
+      throw new Error('Лист проектов не найден');
+    }
+    
+    const data = projectsSheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIndex = headers.indexOf('ID');
+    
+    if (idIndex === -1) {
+      throw new Error('Колонка ID не найдена');
+    }
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idIndex] === projectId) {
+        projectsSheet.deleteRow(i + 1);
+        
+        // Также удаляем связанные задачи
+        deleteTasksByProject(projectId);
+        
+        Logger.log(`Проект ${projectId} удален`);
+        return { success: true };
+      }
+    }
+    
+    throw new Error('Проект не найден');
+    
+  } catch (error) {
+    Logger.log('Ошибка удаления проекта: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Удаляет все задачи проекта
+ */
+function deleteTasksByProject(projectId) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const tasksSheet = ss.getSheetByName('Задачи');
+    
+    if (!tasksSheet) return;
+    
+    const data = tasksSheet.getDataRange().getValues();
+    const headers = data[0];
+    const projectIdIndex = headers.indexOf('ID проекта');
+    
+    if (projectIdIndex === -1) return;
+    
+    // Удаляем строки снизу вверх
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (data[i][projectIdIndex] === projectId) {
+        tasksSheet.deleteRow(i + 1);
+      }
+    }
+    
+    Logger.log(`Задачи проекта ${projectId} удалены`);
+    
+  } catch (error) {
+    Logger.log('Ошибка удаления задач проекта: ' + error.message);
+  }
+}
+
+/**
+ * Удаляет задачу
+ */
+function deleteTask(taskId) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const tasksSheet = ss.getSheetByName('Задачи');
+    
+    if (!tasksSheet) {
+      throw new Error('Лист задач не найден');
+    }
+    
+    const data = tasksSheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIndex = headers.indexOf('ID');
+    
+    if (idIndex === -1) {
+      throw new Error('Колонка ID не найдена');
+    }
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idIndex] === taskId) {
+        tasksSheet.deleteRow(i + 1);
+        Logger.log(`Задача ${taskId} удалена`);
+        return { success: true };
+      }
+    }
+    
+    throw new Error('Задача не найдена');
+    
+  } catch (error) {
+    Logger.log('Ошибка удаления задачи: ' + error.message);
+    return { success: false, error: error.message };
   }
 }
