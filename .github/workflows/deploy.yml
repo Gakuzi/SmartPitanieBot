@@ -2,13 +2,10 @@ name: Deploy to Google Apps Script
 
 on:
   push:
-    branches:
-      - main
-
+    branches: [ main ]
   schedule:
-    - cron: '0 4 * * *' # каждый день в 07:00 по Москве (UTC+3)
-
-  workflow_dispatch: {} # ручной запуск из интерфейса GitHub
+    - cron: '0 4 * * *' # 07:00 по Москве
+  workflow_dispatch: {}
 
 jobs:
   deploy:
@@ -28,8 +25,18 @@ jobs:
       - name: Установка clasp
         run: npm install -g @google/clasp
 
-      - name: Синхронизация с Google Apps Script
+      - name: Предварительная синхронизация (pull)
+        run: clasp pull
+
+      - name: Проверка изменений
+        run: clasp status
+
+      - name: Синхронизация (push)
         run: clasp push
 
-      - name: Публикация новой версии
+      - name: Публикация версии
         run: clasp deploy
+
+      - name: Уведомление в Telegram
+        if: always()
+        run: bash ./notify-telegram.sh "${{ job.status }}" "${{ github.sha }}"
