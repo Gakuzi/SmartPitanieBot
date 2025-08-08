@@ -1,0 +1,26 @@
+name: Deploy to Google Apps Script
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Restore client_secret.json
+        run: echo '${{ secrets.CLIENT_SECRET_JSON }}' > client_secret.json
+
+      - name: Authenticate clasp
+        run: clasp login --creds client_secret.json
+
+      - name: Push to Google Apps Script
+        run: clasp push
