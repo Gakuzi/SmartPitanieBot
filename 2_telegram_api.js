@@ -104,7 +104,7 @@ function sendChatAction(chatId, action = 'typing') {
 }
 
 
-function editMessageText(chatId, messageId, text) {
+function editMessageText(chatId, messageId, text, replyMarkup) {
   const telegramToken = PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN');
   if (!telegramToken) {
     Logger.log("❌ КРИТИЧЕСКАЯ ОШИБКА: TELEGRAM_TOKEN не найден в ScriptProperties!");
@@ -115,9 +115,12 @@ function editMessageText(chatId, messageId, text) {
   const payload = {
     chat_id: String(chatId),
     message_id: messageId,
-    text: text,
-    parse_mode: 'Markdown'
+    text: escapeMarkdownV2(text),
+    parse_mode: 'MarkdownV2'
   };
+  if (replyMarkup) {
+    payload.reply_markup = JSON.stringify(replyMarkup);
+  }
   const options = {
     method: 'post',
     contentType: 'application/json',
