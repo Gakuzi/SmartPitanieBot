@@ -181,6 +181,7 @@ function handleUserInput(chatId, input, session) {
           return;
         }
         session.data.weight = Number(input);
+        saveUserParam(chatId, 'weight', session.data.weight);
         updateSession(chatId, 'awaiting_height', session.data);
         sendText(chatId, 'Отлично! Теперь введите ваш рост в сантиметрах (например, 175):');
         break;
@@ -191,6 +192,7 @@ function handleUserInput(chatId, input, session) {
           return;
         }
         session.data.height = Number(input);
+        saveUserParam(chatId, 'height', session.data.height);
         updateSession(chatId, 'awaiting_age', session.data);
         sendText(chatId, 'Принято. Сколько вам полных лет?');
         break;
@@ -201,6 +203,7 @@ function handleUserInput(chatId, input, session) {
           return;
         }
         session.data.age = Number(input);
+        saveUserParam(chatId, 'age', session.data.age);
         updateSession(chatId, 'awaiting_sex', session.data);
         sendSexOptions(chatId);
         break;
@@ -217,7 +220,7 @@ function handleUserInput(chatId, input, session) {
         if (aiResponse) {
           sendText(chatId, aiResponse);
           // Если AI решил, что информации достаточно, можно переходить к следующему шагу
-          if (aiResponse.includes("Отлично, я собрал всю информацию")) {
+          if (typeof aiResponse === 'string' && aiResponse.includes("Отлично, я собрал всю информацию")) {
             clearSession(chatId);
             // Здесь в будущем будет запуск расчета КБЖУ и генерации меню
             sendMenu(chatId);
@@ -266,6 +269,12 @@ function onboardUser(chatId, from) {
 
   scriptProps.setProperty(String(chatId), userFolder.getId());
 
+  // Сохраняем ссылки в userProps для быстрого доступа
+  saveUserParam(chatId, 'sheetId', userSpreadsheet.getId());
+  saveUserParam(chatId, 'sheetUrl', userSpreadsheet.getUrl());
+  saveUserParam(chatId, 'folderId', userFolder.getId());
+  saveUserParam(chatId, 'folderUrl', userFolder.getUrl());
+
   // Добавляем пользователя в общую таблицу
   const usersSsId = scriptProps.getProperty('USERS_SPREADSHEET_ID');
   if (usersSsId) {
@@ -286,6 +295,70 @@ function onboardUser(chatId, from) {
       false // Администратор по умолчанию
     ]);
   }
+}
+
+function handleGoalSelection(callbackQuery) {
+  const chatId = callbackQuery.from.id;
+  const data = callbackQuery.data; // goal_loss | goal_maintenance | goal_gain
+  const goalMap = { goal_loss: 'loss', goal_maintenance: 'maintenance', goal_gain: 'gain' };
+  const goal = goalMap[data];
+  if (!goal) return;
+  saveUserParam(chatId, 'goal', goal);
+  sendText(chatId, 'Цель сохранена. Теперь выберите уровень активности:');
+  sendActivityOptions(chatId);
+}
+
+function handleSexSelection(callbackQuery) {
+  const chatId = callbackQuery.from.id;
+  const data = callbackQuery.data; // sex_male | sex_female
+  const gender = data === 'sex_male' ? 'male' : 'female';
+  saveUserParam(chatId, 'gender', gender);
+  sendText(chatId, 'Пол сохранён. Укажите, пожалуйста, ваш уровень активности:');
+  sendActivityOptions(chatId);
+}
+
+function handleActivitySelection(callbackQuery) {
+  const chatId = callbackQuery.from.id;
+  const data = callbackQuery.data; // activity_minimal ... activity_extreme
+  const activityLevel = data.replace('activity_', '');
+  saveUserParam(chatId, 'activityLevel', activityLevel);
+  sendText(chatId, 'Уровень активности сохранён. Теперь установите цель в настройках, если ещё не сделали.');
+  const userData = getUserData(chatId);
+  if (userData.weight && userData.height && userData.age && userData.gender && userData.goal) {
+    triggerNutritionCalculation(chatId, userData);
+  }
+}
+
+function handleNutritionMenu(chatId) {
+  sendTodayMenu(chatId);
+}
+
+function handleShoppingList(chatId) {
+  sendShoppingList(chatId);
+}
+
+function handleSettings(chatId) {
+  sendSettingsMenu(chatId);
+}
+
+function handleStatistics(chatId) {
+  const userData = getUserData(chatId);
+  const lines = [];
+  if (userData.calories) {
+    lines.push(`Калории: ${userData.calories} ккал`);
+    lines.push(`Белки: ${userData.proteins || '-'} г, Жиры: ${userData.fats || '-'} г, Углеводы: ${userData.carbs || '-'} г`);
+  } else {
+    lines.push('Пока статистика пуста. Заполните профиль и рассчитайте КБЖУ.');
+  }
+  sendText(chatId, `Ваша статистика:\n\n${lines.join('\n')}`);
+}
+
+function handleProductReplacements(chatId) {
+  sendText(chatId, 'Напишите: "🔄 замена <продукт>", например: 🔄 замена творог');
+}
+
+function handleFoodDiary(chatId) {
+  sendText(chatId, 'Дневник питания скоро будет доступен.');
 }
 
 // --- Session Management ---
