@@ -22,5 +22,23 @@
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/script.container.ui",
     "https://www.googleapis.com/auth/script.external_request"
+  ],
+  "fileOrder": [
+    "config.js",
+    "0_setup.js",
+    "7_utils.js",
+    "2_telegram_api.js",
+    "8_gemini_api.js",
+    "6_sheets_api.js",
+    "4_user_data.js",
+    "5_nutrition_ai.js",
+    "3_ui_menus.js",
+    "AI_assistant.js",
+    "1_main.js",
+    "9_manual_mode.js",
+    "0_onOpen.js",
+    "doPost.js",
+    "DEBUG_router.js",
+    "ui_dialogs.js"
   ]
 }

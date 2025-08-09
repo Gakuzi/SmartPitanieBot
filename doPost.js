@@ -1,6 +1,6 @@
 /**
  * @file doPost.js
- * @description Единая точка входа. В режиме отладки передает управление в DEBUG_router.js.
+ * @description Единая точка входа для обработки webhook'ов от Telegram через ИИ-ассистента.
  */
 
 function doPost(e) {
@@ -11,12 +11,12 @@ function doPost(e) {
     }
     const data = JSON.parse(e.postData.contents);
     
-    // --- РЕЖИМ ОТЛАДКИ ---
-    // Просто передаем все данные в отладочный маршрутизатор
-    debugRouter(data);
-    // --- КОНЕЦ РЕЖИЛА ОТЛАДКИ ---
+    // --- РЕЖИМ ИИ-АССИСТЕНТА ---
+    // Передаем все данные в ИИ-ассистент для интеллектуальной обработки
+    aiAssistant(data);
+    // --- КОНЕЦ РЕЖИМА ИИ-АССИСТЕНТА ---
 
   } catch (err) {
-    Logger.log(`КРИТИЧЕСКАЯ ОШИБКА в doPost (оболочка отладки): ${err.message}\nСтек: ${err.stack}`);
+    Logger.log(`КРИТИЧЕСКАЯ ОШИБКА в doPost: ${err.message}\nСтек: ${err.stack}`);
   }
 }
