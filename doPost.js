@@ -10,13 +10,19 @@ function doPost(e) {
       return;
     }
     const data = JSON.parse(e.postData.contents);
-    
-    // --- РЕЖИМ ОТЛАДКИ ---
-    // Просто передаем все данные в отладочный маршрутизатор
-    debugRouter(data);
-    // --- КОНЕЦ РЕЖИЛА ОТЛАДКИ ---
+
+    // Определяем, включен ли режим отладки по ScriptProperties (DEBUG_MODE=true)
+    const isDebug = PropertiesService.getScriptProperties().getProperty('DEBUG_MODE') === 'true';
+
+    if (isDebug) {
+      // --- РЕЖИМ ОТЛАДКИ ---
+      debugRouter(data);
+    } else {
+      // --- ПРОДАКШН РЕЖИМ ---
+      handleUpdate(data);
+    }
 
   } catch (err) {
-    Logger.log(`КРИТИЧЕСКАЯ ОШИБКА в doPost (оболочка отладки): ${err.message}\nСтек: ${err.stack}`);
+    Logger.log(`КРИТИЧЕСКАЯ ОШИБКА в doPost: ${err.message}\nСтек: ${err.stack}`);
   }
 }
