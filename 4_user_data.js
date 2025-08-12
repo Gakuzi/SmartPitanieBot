@@ -463,3 +463,250 @@ function getProjectStats() {
   }
 }
 
+// --- Управление профилями пользователей ---
+
+/**
+ * Получает полный профиль пользователя из его Google Sheets
+ * @param {string|number} chatId - ID чата пользователя
+ * @returns {Object} Профиль пользователя
+ */
+function getUserProfile(chatId) {
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const userFolderId = scriptProps.getProperty(String(chatId));
+    
+    if (!userFolderId) {
+      return createEmptyProfile();
+    }
+
+    // Получаем таблицу пользователя
+    const userFolder = DriveApp.getFolderById(userFolderId);
+    const files = userFolder.getFilesByType(MimeType.GOOGLE_SHEETS);
+    
+    if (!files.hasNext()) {
+      return createEmptyProfile();
+    }
+
+    const userSpreadsheet = SpreadsheetApp.openById(files.next().getId());
+    
+    // Проверяем наличие листа "Профиль"
+    let profileSheet = userSpreadsheet.getSheetByName('Профиль');
+    if (!profileSheet) {
+      profileSheet = createUserProfileSheet(userSpreadsheet);
+    }
+
+    // Читаем данные профиля
+    const data = profileSheet.getRange('A1:B50').getValues();
+    const profile = createEmptyProfile();
+    
+    for (let i = 0; i < data.length; i++) {
+      const [key, value] = data[i];
+      if (key && value !== '') {
+        profile[key] = value;
+      }
+    }
+
+    return profile;
+
+  } catch (error) {
+    Logger.log(`Ошибка получения профиля пользователя ${chatId}: ${error.message}`);
+    return createEmptyProfile();
+  }
+}
+
+/**
+ * Сохраняет профиль пользователя в его Google Sheets
+ * @param {string|number} chatId - ID чата пользователя
+ * @param {Object} profile - Данные профиля
+ * @returns {boolean} Успешность операции
+ */
+function saveUserProfile(chatId, profile) {
+  try {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const userFolderId = scriptProps.getProperty(String(chatId));
+    
+    if (!userFolderId) {
+      Logger.log(`Папка пользователя ${chatId} не найдена`);
+      return false;
+    }
+
+    const userFolder = DriveApp.getFolderById(userFolderId);
+    const files = userFolder.getFilesByType(MimeType.GOOGLE_SHEETS);
+    
+    if (!files.hasNext()) {
+      Logger.log(`Таблица пользователя ${chatId} не найдена`);
+      return false;
+    }
+
+    const userSpreadsheet = SpreadsheetApp.openById(files.next().getId());
+    
+    let profileSheet = userSpreadsheet.getSheetByName('Профиль');
+    if (!profileSheet) {
+      profileSheet = createUserProfileSheet(userSpreadsheet);
+    }
+
+    // Очищаем лист и записываем новые данные
+    profileSheet.clear();
+    
+    const dataToWrite = [];
+    for (const [key, value] of Object.entries(profile)) {
+      if (value !== null && value !== undefined && value !== '') {
+        dataToWrite.push([key, value]);
+      }
+    }
+
+    if (dataToWrite.length > 0) {
+      profileSheet.getRange(1, 1, dataToWrite.length, 2).setValues(dataToWrite);
+    }
+
+    // Обновляем время последнего изменения
+    profile.lastUpdated = new Date().toISOString();
+    
+    return true;
+
+  } catch (error) {
+    Logger.log(`Ошибка сохранения профиля пользователя ${chatId}: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Создает пустой профиль пользователя
+ * @returns {Object} Пустой профиль
+ */
+function createEmptyProfile() {
+  return {
+    // Основная информация
+    name: '',
+    age: '',
+    gender: '',
+    height: '',
+    weight: '',
+    
+    // Цели и активность
+    goal: '', // похудение, набор массы, поддержание веса
+    activityLevel: '', // малоподвижный, умеренная активность, высокая активность
+    
+    // Предпочтения в питании
+    dietType: '', // обычное, вегетарианское, веганское, кето и т.д.
+    preferredCuisines: [], // массив предпочитаемых кухонь
+    favoriteProducts: [], // любимые продукты
+    dislikedProducts: [], // нелюбимые продукты
+    
+    // Ограничения и аллергии
+    allergies: [], // аллергии
+    intolerances: [], // непереносимости
+    medicalRestrictions: [], // медицинские ограничения
+    
+    // Бюджет и время
+    monthlyBudget: '',
+    cookingTime: '', // сколько времени готов тратить на готовку
+    mealsPerDay: 3, // количество приемов пищи
+    
+    // История общения с ИИ
+    conversationHistory: [],
+    onboardingCompleted: false,
+    
+    // Системная информация
+    createdAt: new Date().toISOString(),
+    lastUpdated: new Date().toISOString(),
+    
+    // Предпочтения уведомлений
+    notificationTime: '09:00',
+    notificationsEnabled: true
+  };
+}
+
+/**
+ * Создает лист "Профиль" в таблице пользователя
+ * @param {Spreadsheet} spreadsheet - Таблица пользователя
+ * @returns {Sheet} Созданный лист
+ */
+function createUserProfileSheet(spreadsheet) {
+  const profileSheet = spreadsheet.insertSheet('Профиль');
+  
+  // Добавляем заголовки
+  profileSheet.getRange('A1:B1').setValues([['Параметр', 'Значение']]);
+  profileSheet.getRange('A1:B1').setFontWeight('bold');
+  profileSheet.getRange('A1:B1').setBackground('#e8f0fe');
+  
+  // Настраиваем ширину колонок
+  profileSheet.setColumnWidth(1, 200);
+  profileSheet.setColumnWidth(2, 300);
+  
+  return profileSheet;
+}
+
+/**
+ * Обновляет конкретное поле в профиле пользователя
+ * @param {string|number} chatId - ID чата пользователя
+ * @param {string} field - Название поля
+ * @param {any} value - Новое значение
+ * @returns {boolean} Успешность операции
+ */
+function updateUserProfileField(chatId, field, value) {
+  try {
+    const profile = getUserProfile(chatId);
+    profile[field] = value;
+    profile.lastUpdated = new Date().toISOString();
+    return saveUserProfile(chatId, profile);
+  } catch (error) {
+    Logger.log(`Ошибка обновления поля ${field} для пользователя ${chatId}: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Добавляет сообщение в историю общения с ИИ
+ * @param {string|number} chatId - ID чата пользователя
+ * @param {string} role - Роль (user/assistant)
+ * @param {string} message - Текст сообщения
+ * @returns {boolean} Успешность операции
+ */
+function addToConversationHistory(chatId, role, message) {
+  try {
+    const profile = getUserProfile(chatId);
+    
+    if (!profile.conversationHistory) {
+      profile.conversationHistory = [];
+    }
+    
+    profile.conversationHistory.push({
+      timestamp: new Date().toISOString(),
+      role: role,
+      message: message
+    });
+    
+    // Ограничиваем историю последними 50 сообщениями
+    if (profile.conversationHistory.length > 50) {
+      profile.conversationHistory = profile.conversationHistory.slice(-50);
+    }
+    
+    return saveUserProfile(chatId, profile);
+  } catch (error) {
+    Logger.log(`Ошибка добавления в историю для пользователя ${chatId}: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Получает историю общения для использования в промптах ИИ
+ * @param {string|number} chatId - ID чата пользователя
+ * @param {number} lastN - Количество последних сообщений (по умолчанию 10)
+ * @returns {Array} Массив сообщений
+ */
+function getConversationHistory(chatId, lastN = 10) {
+  try {
+    const profile = getUserProfile(chatId);
+    
+    if (!profile.conversationHistory || profile.conversationHistory.length === 0) {
+      return [];
+    }
+    
+    return profile.conversationHistory.slice(-lastN);
+  } catch (error) {
+    Logger.log(`Ошибка получения истории для пользователя ${chatId}: ${error.message}`);
+    return [];
+  }
+}
+

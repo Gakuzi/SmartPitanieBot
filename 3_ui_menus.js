@@ -112,6 +112,10 @@ function showWebhookManagerDialog() {
   SpreadsheetApp.getUi().showModalDialog(html, 'Анализатор статуса вебхука');
 }
 
+function showWebhookDialog() {
+  return showWebhookManagerDialog();
+}
+
 /**
  * Получает базовую информацию о вебхуке и проводит первичный анализ.
  * @returns {object} - Объект с базовой информацией и результатом анализа.
@@ -448,8 +452,8 @@ function clearCurrentSheet() {
 function getMenu(chatId) {
   return {
     keyboard: [
-      [{ text: '🍽 Показать меню' }, { text: '🛒 Список покупок' }],
-      [{ text: '⚙️ Настройки' }, { text: '🔄 Замена продукта' }]
+      [{ text: '🍽 показать меню' }, { text: '🛒 список покупок' }],
+      [{ text: '⚙️ настройки' }, { text: '🔄 замена продукта' }]
     ],
     resize_keyboard: true,
     one_time_keyboard: false
@@ -804,4 +808,48 @@ function handleAdminAllTasks(chatId) {
   } catch (error) {
     sendText(chatId, '❌ Ошибка при загрузке задач: ' + error.message);
   }
+}
+
+function sendSettingsMenu(chatId) {
+  const keyboard = {
+    keyboard: [
+      [{ text: '🥅 установить цель' }, { text: '⚖️ ввести параметры' }],
+      [{ text: '🕒 установить время уведомлений' }, { text: '⬅️ назад' }]
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: false
+  };
+  sendText(chatId, 'Настройки профиля:', keyboard);
+}
+
+function sendGoalOptions(chatId) {
+  const keyboard = {
+    inline_keyboard: [[
+      { text: 'Похудение', callback_data: 'goal_loss' },
+      { text: 'Поддержание', callback_data: 'goal_maintenance' },
+      { text: 'Набор массы', callback_data: 'goal_gain' }
+    ]]
+  };
+  sendText(chatId, 'Выберите вашу цель:', keyboard);
+}
+
+function sendSexOptions(chatId) {
+  const keyboard = {
+    inline_keyboard: [[
+      { text: 'Мужчина', callback_data: 'sex_male' },
+      { text: 'Женщина', callback_data: 'sex_female' }
+    ]]
+  };
+  sendText(chatId, 'Укажи пол:', keyboard);
+}
+
+function sendActivityOptions(chatId) {
+  const keyboard = {
+    inline_keyboard: [
+      [ { text: 'Минимальная', callback_data: 'activity_minimal' }, { text: 'Лёгкая', callback_data: 'activity_light' } ],
+      [ { text: 'Средняя', callback_data: 'activity_medium' }, { text: 'Высокая', callback_data: 'activity_high' } ],
+      [ { text: 'Экстремальная', callback_data: 'activity_extreme' } ]
+    ]
+  };
+  sendText(chatId, 'Выберите уровень активности:', keyboard);
 }

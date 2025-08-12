@@ -1,6 +1,6 @@
 /**
  * @file doPost.js
- * @description Единая точка входа. В режиме отладки передает управление в DEBUG_router.js.
+ * @description Единая точка входа для обработки webhook'ов от Telegram через ИИ-ассистента.
  */
 
 function doPost(e) {
