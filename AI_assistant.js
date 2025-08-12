@@ -83,6 +83,7 @@ function handleUserMessage(chatId, messageText, fromUser) {
       return;
     }
     
+
     // Проверяем команды меню
     if (isMenuCommand(messageText)) {
       handleMenuCommand(chatId, messageText, userProfile);
@@ -105,6 +106,7 @@ function handleUserMessage(chatId, messageText, fromUser) {
 }
 
 /**
+
  * Проверяет, является ли сообщение командой меню
  * @param {string} messageText - Текст сообщения
  * @returns {boolean} - True если это команда меню
@@ -392,6 +394,7 @@ function sendMainMenu(chatId) {
 }
 
 /**
+
  * Запускает процесс знакомства с новым пользователем
  * @param {string|number} chatId - ID чата
  * @param {Object} fromUser - Информация о пользователе из Telegram
@@ -573,6 +576,7 @@ function analyzeAndUpdateProfile(chatId, userMessage, aiResponse, userProfile) {
  */
 function processMessageWithAI(chatId, messageText, userProfile) {
   try {
+
     // Проверяем, редактирует ли пользователь поле профиля
     if (userProfile.editingField) {
       handleFieldEdit(chatId, messageText, userProfile.editingField);
@@ -1184,4 +1188,5 @@ function handleResetProfile(chatId) {
   };
   
   sendText(chatId, "⚠️ **Внимание!**\n\nВы действительно хотите сбросить весь профиль? Вся информация будет удалена и придется заново проходить знакомство.", keyboard);
+
 }

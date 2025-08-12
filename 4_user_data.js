@@ -709,7 +709,6 @@ function getConversationHistory(chatId, lastN = 10) {
     return [];
   }
 }
-
 /**
  * Сбрасывает профиль пользователя
  * @param {string|number} chatId - ID чата пользователя
@@ -724,4 +723,5 @@ function resetUserProfile(chatId) {
     return false;
   }
 }
+
 

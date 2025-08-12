@@ -16,6 +16,7 @@ function doPost(e) {
     aiAssistant(data);
     // --- КОНЕЦ РЕЖИМА ИИ-АССИСТЕНТА ---
 
+
   } catch (err) {
     Logger.log(`КРИТИЧЕСКАЯ ОШИБКА в doPost: ${err.message}\nСтек: ${err.stack}`);
   }

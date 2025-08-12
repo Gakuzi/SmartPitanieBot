@@ -83,29 +83,65 @@ function triggerNutritionCalculation(chatId, userData) {
 }
 
 
+// --- ДОБАВЛЕНО: Упрощенный расчет BMR для ручного режима ---
+/**
+ * Рассчитывает базовые параметры питания для ручного режима меню.
+ * Возвращает структуру, ожидаемую функцией generateMenu из файла 9_manual_mode.js
+ */
+function calculateBMR(userData) {
+  const { weight, height, age, gender, activityLevel, goal } = userData || {};
+  if (!weight || !height || !age || !gender || !activityLevel || !goal) {
+    throw new Error('Недостаточно данных для расчета BMR');
+  }
+
+  // Формула Миффлина-Сан Жеора
+  let bmr;
+  if (gender === 'male') {
+    bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+  } else {
+    bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+  }
+
+  const activityMultipliers = {
+    minimal: 1.2,
+    light: 1.375,
+    medium: 1.55,
+    high: 1.725,
+    extreme: 1.9
+  };
+  const tdee = bmr * (activityMultipliers[activityLevel] || 1.2);
+
+  const goalMultipliers = { loss: 0.85, maintenance: 1.0, gain: 1.15 };
+  const dailyCalories = Math.round(tdee * (goalMultipliers[goal] || 1.0));
+
+  // Пропорции БЖУ по умолчанию
+  const ratios = { loss: { p: 0.35, f: 0.30, c: 0.35 }, maintenance: { p: 0.30, f: 0.30, c: 0.40 }, gain: { p: 0.30, f: 0.25, c: 0.45 } };
+  const r = ratios[goal] || ratios.maintenance;
+
+  return {
+    dailyCalories,
+    protein: Math.round((dailyCalories * r.p) / 4),
+    fats: Math.round((dailyCalories * r.f) / 9),
+    carbs: Math.round((dailyCalories * r.c) / 4)
+  };
+}
+
 // --- AI-модуль: Диалоги --- 
 
 /**
- * Начинает диалог настройки профиля.
+ * Начинает диалог настройки профиля (устойчивый вариант без AI).
  * @param {string|number} chatId - ID чата.
  * @param {string} userName - Имя пользователя.
  */
 function startSetupDialog(chatId, userName) {
-  if (!isAiModeEnabled()) {
-    sendText(chatId, "🤖 AI-ассистент в данный момент отключен администратором. Пожалуйста, воспользуйтесь командами из меню для настройки профиля вручную.", getMenu(chatId));
-    return;
-  }
-  // Устанавливаем состояние пользователя
-  setUserState(chatId, STATES.AWAITING_SETUP);
-  
-  // Генерируем первый промт
-  const prompt = generateAcquaintancePrompt(userName);
-  
-  // Вызываем Gemini
-  const geminiResponse = callGemini(prompt, chatId);
-  
-  // Отправляем ответ пользователю
-  sendFormattedText(chatId, geminiResponse);
+  // Запускаем устойчивый сценарий без AI, который надёжен для онбординга
+  const sessionData = { telegramUser: { first_name: userName } };
+  startSession(chatId, 'awaiting_name_confirmation', sessionData);
+
+  const hello = `Привет, ${userName}! Давай познакомимся и настроим профиль.\n\n` +
+                `Могу обращаться к тебе как "${userName}"?\n` +
+                `Если да — напиши \"да\".\nЕсли хочешь другое имя — просто напиши его.`;
+  sendText(chatId, hello, getMenu(chatId));
 }
 
 /**
@@ -267,13 +303,9 @@ function formatMenuForDisplay(menu) {
 `;
 
   menu.meals.forEach(meal => {
-    message += `*${meal.name}: ${meal.recipe_name}*
-`;
-    message += `_${meal.description}_
-`;
-    message += `(КБЖУ: ${meal.calories} ккал, Б:${meal.proteins}г, Ж:${meal.fats}г, У:${meal.carbs}г)
-
-`;
+    message += `*${meal.name}: ${meal.recipe_name}*\n`;
+    message += `_${meal.description}_\n`;
+    message += `(КБЖУ: ${meal.calories} ккал, Б:${meal.proteins}г, Ж:${meal.fats}г, У:${meal.carbs}г)\n\n`;
   });
 
   message += `Чтобы посмотреть рецепты, нажмите "👨‍🍳 Что готовим?".`;
