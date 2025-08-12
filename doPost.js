@@ -10,17 +10,12 @@ function doPost(e) {
       return;
     }
     const data = JSON.parse(e.postData.contents);
+    
+    // --- РЕЖИМ ИИ-АССИСТЕНТА ---
+    // Передаем все данные в ИИ-ассистент для интеллектуальной обработки
+    aiAssistant(data);
+    // --- КОНЕЦ РЕЖИМА ИИ-АССИСТЕНТА ---
 
-    // Определяем, включен ли режим отладки по ScriptProperties (DEBUG_MODE=true)
-    const isDebug = PropertiesService.getScriptProperties().getProperty('DEBUG_MODE') === 'true';
-
-    if (isDebug) {
-      // --- РЕЖИМ ОТЛАДКИ ---
-      debugRouter(data);
-    } else {
-      // --- ПРОДАКШН РЕЖИМ ---
-      handleUpdate(data);
-    }
 
   } catch (err) {
     Logger.log(`КРИТИЧЕСКАЯ ОШИБКА в doPost: ${err.message}\nСтек: ${err.stack}`);

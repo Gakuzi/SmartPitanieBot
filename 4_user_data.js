@@ -709,4 +709,19 @@ function getConversationHistory(chatId, lastN = 10) {
     return [];
   }
 }
+/**
+ * Сбрасывает профиль пользователя
+ * @param {string|number} chatId - ID чата пользователя
+ * @returns {boolean} Успешность операции
+ */
+function resetUserProfile(chatId) {
+  try {
+    const emptyProfile = createEmptyProfile();
+    return saveUserProfile(chatId, emptyProfile);
+  } catch (error) {
+    Logger.log(`Ошибка сброса профиля для пользователя ${chatId}: ${error.message}`);
+    return false;
+  }
+}
+
 
